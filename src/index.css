@@ -1,0 +1,58 @@
+@import 'tailwindcss';
+
+tr {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.bg-DarkPrimary {
+  background-color: #efefef;
+}
+
+.scrollbar {
+  scrollbar-width: thin;
+  -ms-overflow-style: -ms-autohiding-scrollbar;
+}
+
+.scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+
+@media (max-width: 576px) {
+  .add-btn {
+    margin-top: 10px;
+  }
+}
+
+
+.card-extra-responsive {
+  display: flex;
+  align-items: center;
+}
+
+@media (max-width: 576px) {
+  .ant-card-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .card-extra-responsive {
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .card-extra-responsive .ant-btn {
+    width: 100%;
+  }
+}
+
