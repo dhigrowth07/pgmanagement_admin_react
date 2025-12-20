@@ -9,6 +9,7 @@ import issueReducer from "./issue/issueSlice";
 import paymentReducer from "./payment/paymentSlice";
 import electricityReducer from "./electricity/electricitySlice";
 import deletionRequestReducer from "./deletionRequest/deletionRequestSlice";
+import expenseReducer from "./expense/expenseSlice";
 const persistConfig = {
   key: "root",
   version: 1,
@@ -25,6 +26,7 @@ const rootReducer = combineReducers({
   payment: paymentReducer,
   electricity: electricityReducer,
   deletionRequest: deletionRequestReducer,
+  expense: expenseReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

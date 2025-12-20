@@ -10,6 +10,7 @@ import AlertsPage from "../../pages/dashboard/alerts/AlertsPage";
 import IssuesPage from "../../pages/dashboard/issues/IssuesPage";
 import ReportsPage from "../../pages/dashboard/reports/ReportsPage";
 import DeletionRequestsPage from "../../pages/dashboard/deletionRequests/DeletionRequestsPage";
+import ExpenseManagementPage from "../../pages/dashboard/expense/ExpenseManagementPage";
 const { Content: AntContent } = Layout;
 
 const Content = ({ selectedMenu, onMenuChange }) => {
@@ -41,6 +42,9 @@ const Content = ({ selectedMenu, onMenuChange }) => {
       break;
     case "reports":
       content = <ReportsPage />;
+      break;
+    case "expenses":
+      content = <ExpenseManagementPage />;
       break;
     case "deletion-requests":
       content = <DeletionRequestsPage />;

@@ -17,6 +17,7 @@ import {
   StopOutlined,
   ReloadOutlined,
   CalendarOutlined,
+  CloseCircleOutlined,
 } from "@ant-design/icons";
 
 const CustomerTable = ({
@@ -34,6 +35,7 @@ const CustomerTable = ({
   onActivate,
   onReassign,
   onVacateRoom,
+  onCancelVacation,
 }) => {
   const [pagination, setPagination] = useState({
     current: 1,
@@ -44,22 +46,12 @@ const CustomerTable = ({
     setPagination(paginationInfo);
   };
 
-  const getEditLabel = (record) => {
-    if (!record.room_id) return "Onboard";
-    return "Change Room";
-  };
-
-  const handleEditClick = (record) => {
-    // Only use onEdit for onboarding (when user doesn't have a room)
-    if (!record.room_id) {
-      onEdit(record, "full");
-    }
-  };
-
   const getMenuItems = (record) => {
     // Determine if user is Vacated or Inactive
     const displayStatus = record.status || (record.is_active ? "Active" : "Inactive");
     const isVacatedOrInactive = displayStatus === "Vacated" || displayStatus === "Inactive";
+    // Check if user has a scheduled vacation (status is "Vacating" or vacating_on exists)
+    const hasScheduledVacation = displayStatus === "Vacating" || record.vacating_on;
 
     return (
       <Menu>
@@ -96,7 +88,12 @@ const CustomerTable = ({
             <Menu.Item key="password" icon={<KeyOutlined />} onClick={() => onChangePassword(record)}>
               Change Password
             </Menu.Item>
-            {onVacateRoom && (
+            {hasScheduledVacation && onCancelVacation && (
+              <Menu.Item key="cancelVacation" icon={<CloseCircleOutlined />} onClick={() => onCancelVacation(record)}>
+                Cancel Vacation
+              </Menu.Item>
+            )}
+            {!hasScheduledVacation && onVacateRoom && (
               <Menu.Item key="vacate" icon={<CalendarOutlined />} onClick={() => onVacateRoom(record)}>
                 Vacate Room
               </Menu.Item>
@@ -136,7 +133,7 @@ const CustomerTable = ({
       title: "Block",
       dataIndex: "block_name",
       key: "block",
-      render: (blockName, record) =>
+      render: (blockName) =>
         blockName ? (
           <Tag color="geekblue" style={{ fontSize: "13px", padding: "4px 12px" }}>
             {blockName}
@@ -151,20 +148,40 @@ const CustomerTable = ({
       },
     },
     {
-      title: "Room & Tariff",
+      title: "Room",
       dataIndex: "room_number",
       key: "room",
-      render: (roomNumber, record) =>
+      render: (roomNumber) =>
         roomNumber ? (
-          <>
-            <div style={{ fontWeight: 500 }}>{roomNumber}</div>
-            <div style={{ fontSize: "12px", color: "#888" }}>
-              <Tag color="blue">{record.tariff_name || "No Tariff"}</Tag>
-            </div>
-          </>
+          <Tag color="geekblue" style={{ fontSize: "13px", padding: "4px 12px" }}>
+            {roomNumber}
+          </Tag>
         ) : (
-          <Tag color="orange">Unassigned</Tag>
+          <Tag color="default">Unassigned</Tag>
         ),
+      sorter: (a, b) => {
+        const roomA = a.room_number || "";
+        const roomB = b.room_number || "";
+        return roomA.localeCompare(roomB);
+      },
+    },
+    {
+      title: "Tariff",
+      dataIndex: "tariff_name",
+      key: "tariff",
+      render: (tariffName) =>
+        tariffName ? (
+          <Tag color="blue" style={{ fontSize: "13px", padding: "4px 12px" }}>
+            {tariffName}
+          </Tag>
+        ) : (
+          <Tag color="default">No Tariff</Tag>
+        ),
+      sorter: (a, b) => {
+        const tariffA = a.tariff_name || "";
+        const tariffB = b.tariff_name || "";
+        return tariffA.localeCompare(tariffB);
+      },
     },
     {
       title: "Advance (₹)",

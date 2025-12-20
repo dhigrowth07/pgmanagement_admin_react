@@ -14,6 +14,11 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
+    // Don't set Content-Type for FormData - let browser set it with boundary
+    if (config.data instanceof FormData) {
+      delete config.headers["Content-Type"];
+    }
+
     const url = config.url || "";
     const isPublicEndpoint = url.includes("/users/signup-onboard") || url.includes("/rooms/public");
 

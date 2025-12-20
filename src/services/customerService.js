@@ -85,3 +85,7 @@ export const changeRoomCustomer = (userId, roomId) => {
 export const vacateUserRoom = (userId) => {
   return api.put(`/api/v1/users/${userId}/vacate`);
 };
+
+export const cancelVacation = (userId) => {
+  return api.delete(`/api/v1/users/${userId}/vacation`);
+};

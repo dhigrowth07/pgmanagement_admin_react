@@ -21,6 +21,7 @@ import {
   activateCustomer,
   changeRoomCustomer,
   vacateUserRoom,
+  cancelVacation,
 } from "../../../redux/customer/customerSlice";
 import { signupOnboardCustomer } from "../../../services/customerService";
 
@@ -180,6 +181,8 @@ const CustomerPage = () => {
       dispatch(removeUserFromRoom(modalState.data.user_id));
     } else if (modalState.type === "vacate") {
       dispatch(vacateUserRoom(modalState.data.user_id));
+    } else if (modalState.type === "cancelVacation") {
+      dispatch(cancelVacation(modalState.data.user_id));
     }
     closeModal();
   };
@@ -317,6 +320,7 @@ const CustomerPage = () => {
           openModal("onboard", record, "full");
         }}
         onVacateRoom={(record) => openModal("vacate", record)}
+        onCancelVacation={(record) => openModal("cancelVacation", record)}
       />
 
       <SignupOnboardModal visible={modalState.type === "signup"} onCancel={closeModal} onSubmit={handleSignupSubmit} loading={isSignupLoading} error={null} />
@@ -367,7 +371,7 @@ const CustomerPage = () => {
       />
 
       <DeleteConfirmModal
-        visible={modalState.type === "delete" || modalState.type === "removeFromRoom" || modalState.type === "vacate"}
+        visible={modalState.type === "delete" || modalState.type === "removeFromRoom" || modalState.type === "vacate" || modalState.type === "cancelVacation"}
         onCancel={closeModal}
         onConfirm={handleConfirmDelete}
         title={`Confirm Action: ${modalState.data?.name || "Customer"}`}
@@ -376,9 +380,11 @@ const CustomerPage = () => {
             ? "Are you sure you want to permanently delete this customer?"
             : modalState.type === "vacate"
             ? "Are you sure you want to schedule this customer to vacate at the end of the current month? They will be automatically removed from their room on that date."
+            : modalState.type === "cancelVacation"
+            ? "Are you sure you want to cancel this customer's scheduled vacation? They will remain in their room."
             : "Are you sure you want to remove this customer from their room? This will also unassign their tariff."
         }
-        okText={modalState.type === "delete" ? "Delete" : modalState.type === "vacate" ? "Vacate" : "Remove"}
+        okText={modalState.type === "delete" ? "Delete" : modalState.type === "vacate" ? "Vacate" : modalState.type === "cancelVacation" ? "Cancel Vacation" : "Remove"}
       />
     </Card>
   );

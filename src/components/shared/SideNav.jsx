@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
 const { Sider } = Layout;
 const { SubMenu } = Menu;
 
-import { BarChart3, Users, AlertTriangle, Building, Utensils, User, CreditCard, Settings, BuildingIcon, ShieldAlert, Pencil, UserX } from "lucide-react";
+import { BarChart3, Users, AlertTriangle, Building, Utensils, User, CreditCard, Settings, BuildingIcon, ShieldAlert, Pencil, UserX, Receipt } from "lucide-react";
 import { FiSettings } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { logout, selectUser } from "../../redux/auth/authSlice";
@@ -29,13 +29,13 @@ const BASE_MENU_ITEMS = [
     type: "item",
     permission: "is_user_management_enabled",
   },
-  // {
-  //   key: "alerts",
-  //   icon: <AlertTriangle size={18} />,
-  //   label: "Recent Alerts",
-  //   type: "item",
-  //   permission: null, // Always visible
-  // },
+  {
+    key: "alerts",
+    icon: <AlertTriangle size={18} />,
+    label: "Recent Alerts",
+    type: "item",
+    permission: null, // Always visible
+  },
   {
     key: "rooms",
     icon: <Building size={18} />,
@@ -43,13 +43,13 @@ const BASE_MENU_ITEMS = [
     type: "item",
     permission: null, // Always visible
   },
-  {
-    key: "foods",
-    icon: <Utensils size={18} />,
-    label: "Food Management",
-    type: "item",
-    permission: "is_food_enabled",
-  },
+  // {
+  //   key: "foods",
+  //   icon: <Utensils size={18} />,
+  //   label: "Food Management",
+  //   type: "item",
+  //   permission: "is_food_enabled",
+  // },
   {
     key: "issues",
     icon: <ShieldAlert size={18} />,
@@ -57,13 +57,13 @@ const BASE_MENU_ITEMS = [
     type: "item",
     permission: null, // Always visible
   },
-  // {
-  //   key: "payments",
-  //   icon: <CreditCard size={18} />,
-  //   label: "Payments",
-  //   type: "item",
-  //   permission: "is_payment_enabled",
-  // },
+  {
+    key: "payments",
+    icon: <CreditCard size={18} />,
+    label: "Payments",
+    type: "item",
+    permission: "is_payment_enabled",
+  },
   // {
   //   key: "electricity",
   //   icon: <Building size={18} />,
@@ -78,6 +78,13 @@ const BASE_MENU_ITEMS = [
   //   type: "item",
   //   permission: "is_report_access_enabled",
   // },
+  {
+    key: "expenses",
+    icon: <Receipt size={18} />,
+    label: "Expense Management",
+    type: "item",
+    permission: "is_expense_management_enabled",
+  },
   // {
   //   key: "settings",
   //   icon: <FiSettings size={18} />,

@@ -10,14 +10,21 @@ const ProcessPaymentModal = ({ visible, onCancel, onSubmit, loading, payment }) 
   useEffect(() => {
     if (visible && payment) {
       setPaymentType("full");
+      // Use balance_payable_amount (actual remaining balance) or stored_amount_due (actual stored value)
+      // amount_due is calculated from current tariff and may not reflect actual remaining balance
+      const actualAmountDue = Number(payment.balance_payable_amount ?? payment.stored_amount_due ?? payment.amount_due ?? 0);
       form.setFieldsValue({
         payment_method: "online",
-        amount_paid: payment.amount_due,
+        amount_paid: actualAmountDue > 0 ? actualAmountDue : payment.amount_due,
       });
     }
   }, [payment, visible, form]);
 
   if (!payment) return null;
+
+  // Use balance_payable_amount (actual remaining balance) or stored_amount_due (actual stored value)
+  // amount_due is calculated from current tariff and may not reflect actual remaining balance
+  const actualAmountDue = Number(payment.balance_payable_amount ?? payment.stored_amount_due ?? payment.amount_due ?? 0);
 
   const handleFinish = (values) => {
     // Normalize payment method to lowercase to match database constraint
@@ -38,32 +45,21 @@ const ProcessPaymentModal = ({ visible, onCancel, onSubmit, loading, payment }) 
     const type = e.target.value;
     setPaymentType(type);
     if (type === "full") {
-      form.setFieldsValue({ 
-        amount_paid: payment.amount_due,
-        transaction_reference: undefined 
+      form.setFieldsValue({
+        amount_paid: actualAmountDue > 0 ? actualAmountDue : payment.amount_due,
+        transaction_reference: undefined,
       });
     } else if (type === "initial") {
-      form.setFieldsValue({ 
+      form.setFieldsValue({
         amount_paid: undefined,
-        transaction_reference: undefined 
+        transaction_reference: undefined,
       });
     }
   };
 
   return (
-    <Modal 
-      centered 
-      title={`Process Payment for ${payment.email}`} 
-      open={visible} 
-      onCancel={onCancel} 
-      footer={null} 
-      maskClosable={false}
-    >
-      <Alert 
-        message={`Amount Due: ₹${Number(payment.amount_due).toLocaleString()}`} 
-        type="info" 
-        style={{ marginBottom: 16 }} 
-      />
+    <Modal centered title={`Process Payment for ${payment.email}`} open={visible} onCancel={onCancel} footer={null} maskClosable={false}>
+      <Alert message={`Amount Due: ₹${Number(payment.amount_due).toLocaleString()}`} type="info" style={{ marginBottom: 16 }} />
       <Form form={form} layout="vertical" onFinish={handleFinish}>
         <Form.Item label="Payment Type" name="paymentType">
           <Radio.Group defaultValue={"full"} onChange={handleTypeChange} value={paymentType}>
@@ -72,11 +68,7 @@ const ProcessPaymentModal = ({ visible, onCancel, onSubmit, loading, payment }) 
           </Radio.Group>
         </Form.Item>
 
-        <Form.Item 
-          name="payment_method" 
-          label="Payment Method" 
-          rules={[{ required: true, message: "Please select payment method" }]}
-        >
+        <Form.Item name="payment_method" label="Payment Method" rules={[{ required: true, message: "Please select payment method" }]}>
           <Select placeholder="Select payment method">
             <Option value="cash">Cash</Option>
             <Option value="online">Online/UPI</Option>
@@ -89,9 +81,9 @@ const ProcessPaymentModal = ({ visible, onCancel, onSubmit, loading, payment }) 
         {/* Show these fields only for Initial Payment */}
         {paymentType === "initial" && (
           <>
-            <Form.Item 
-              name="amount_paid" 
-              label="Amount Paid" 
+            <Form.Item
+              name="amount_paid"
+              label="Amount Paid"
               rules={[
                 { required: true, message: "Amount paid is required" },
                 { type: "number", min: 0.01, message: "Amount must be greater than 0" },
@@ -105,20 +97,10 @@ const ProcessPaymentModal = ({ visible, onCancel, onSubmit, loading, payment }) 
                 }),
               ]}
             >
-              <InputNumber 
-                style={{ width: "100%" }} 
-                addonBefore="₹" 
-                placeholder="Enter amount paid"
-                min={0.01}
-                max={Number(payment.amount_due)}
-              />
+              <InputNumber style={{ width: "100%" }} addonBefore="₹" placeholder="Enter amount paid" min={0.01} max={actualAmountDue} />
             </Form.Item>
 
-            <Form.Item 
-              name="transaction_reference" 
-              label="Transaction Reference" 
-              rules={[{ required: true, message: "Transaction reference is required for initial payment" }]}
-            >
+            <Form.Item name="transaction_reference" label="Transaction Reference" rules={[{ required: true, message: "Transaction reference is required for initial payment" }]}>
               <Input placeholder="e.g., 1st installment in 5th nov" />
             </Form.Item>
           </>
@@ -126,10 +108,7 @@ const ProcessPaymentModal = ({ visible, onCancel, onSubmit, loading, payment }) 
 
         {/* Show transaction reference as optional for Full Payment */}
         {paymentType === "full" && (
-          <Form.Item 
-            name="transaction_reference" 
-            label="Transaction Reference (Optional)"
-          >
+          <Form.Item name="transaction_reference" label="Transaction Reference (Optional)">
             <Input placeholder="e.g., UPI transaction ID" />
           </Form.Item>
         )}

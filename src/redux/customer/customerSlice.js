@@ -114,6 +114,19 @@ export const vacateUserRoom = createAsyncThunk("customer/vacateRoom", async (use
   }
 });
 
+export const cancelVacation = createAsyncThunk("customer/cancelVacation", async (userId, { dispatch, rejectWithValue }) => {
+  try {
+    const response = await customerService.cancelVacation(userId);
+    toast.success(response.data.msg || "Vacation cancelled successfully.");
+    dispatch(fetchAllCustomers());
+    return response.data.data;
+  } catch (error) {
+    const errorData = handleApiError(error);
+    toast.error(errorData.msg || "Failed to cancel vacation.");
+    return rejectWithValue(errorData);
+  }
+});
+
 export const changeCustomerPassword = createAsyncThunk("customer/changePassword", async ({ userId, newPassword }, { rejectWithValue }) => {
   try {
     const response = await customerService.changePasswordForCustomer(userId, newPassword);
