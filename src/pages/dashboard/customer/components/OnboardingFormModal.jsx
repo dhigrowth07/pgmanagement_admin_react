@@ -14,7 +14,11 @@ const OnboardingFormModal = ({ visible, onCancel, customer, onSubmit, loading, e
   const [fileList, setFileList] = useState([]);
 
   // Only show rooms with available beds (current_occupancy < capacity)
-  const groupedRooms = (blocks || [])
+  // Get all block IDs that exist
+  const existingBlockIds = new Set((blocks || []).map((block) => block.block_id));
+
+  // Group rooms by existing blocks (only show rooms that belong to existing blocks)
+  const groupedByBlocks = (blocks || [])
     .map((block) => {
       const blockRooms = (rooms || []).filter((room) => {
         if (room.block_id !== block.block_id) return false;
@@ -39,6 +43,29 @@ const OnboardingFormModal = ({ visible, onCancel, customer, onSubmit, loading, e
       };
     })
     .filter((group) => group.options.length > 0);
+
+  // Also include rooms with no block_id (null or undefined)
+  const unassignedRooms = (rooms || []).filter((room) => {
+    // Only show rooms with available beds
+    if (room.current_occupancy >= room.capacity) return false;
+    // Room has no block_id
+    return !room.block_id;
+  });
+
+  const groupedRooms = [...groupedByBlocks];
+  if (unassignedRooms.length > 0) {
+    const unassignedGroup = {
+      label: "Unassigned",
+      options: unassignedRooms.map((room) => {
+        const availableBeds = (room.capacity || 0) - (room.current_occupancy || 0);
+        return {
+          label: `Room ${room.room_number} (${availableBeds} bed${availableBeds !== 1 ? "s" : ""} available)`,
+          value: room.room_id,
+        };
+      }),
+    };
+    groupedRooms.push(unassignedGroup);
+  }
 
   useEffect(() => {
     if (visible) {

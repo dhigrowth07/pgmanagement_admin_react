@@ -59,7 +59,7 @@ const ProcessPaymentModal = ({ visible, onCancel, onSubmit, loading, payment }) 
 
   return (
     <Modal centered title={`Process Payment for ${payment.email}`} open={visible} onCancel={onCancel} footer={null} maskClosable={false}>
-      <Alert message={`Amount Due: ₹${Number(payment.amount_due).toLocaleString()}`} type="info" style={{ marginBottom: 16 }} />
+      <Alert message={`Amount Due: ₹${actualAmountDue.toLocaleString()}`} type="info" style={{ marginBottom: 16 }} />
       <Form form={form} layout="vertical" onFinish={handleFinish}>
         <Form.Item label="Payment Type" name="paymentType">
           <Radio.Group defaultValue={"full"} onChange={handleTypeChange} value={paymentType}>
@@ -89,10 +89,10 @@ const ProcessPaymentModal = ({ visible, onCancel, onSubmit, loading, payment }) 
                 { type: "number", min: 0.01, message: "Amount must be greater than 0" },
                 ({ getFieldValue }) => ({
                   validator(_, value) {
-                    if (!value || value <= payment.amount_due) {
+                    if (!value || value <= actualAmountDue) {
                       return Promise.resolve();
                     }
-                    return Promise.reject(new Error(`Amount cannot exceed ₹${Number(payment.amount_due).toLocaleString()}`));
+                    return Promise.reject(new Error(`Amount cannot exceed ₹${actualAmountDue.toLocaleString()}`));
                   },
                 }),
               ]}

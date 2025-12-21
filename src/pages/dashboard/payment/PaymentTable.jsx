@@ -1,20 +1,69 @@
 import React, { useState, useMemo } from "react";
 import { Table, Button, Tag, Dropdown, Menu } from "antd";
-import { EyeOutlined, CheckCircleOutlined, EllipsisOutlined } from "@ant-design/icons";
+import { EyeOutlined, CheckCircleOutlined, EllipsisOutlined, DollarOutlined } from "@ant-design/icons";
+import { useDispatch } from "react-redux";
+import { markShareAsPaid, fetchUserBills } from "../../../redux/electricity/electricitySlice";
+import toast from "react-hot-toast";
 import dayjs from "dayjs";
 
-const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, tariffs = [], userElectricityBills = {} }) => {
+const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, tariffs = [], userElectricityBills = {}, onEBMarkedAsPaid }) => {
+  const dispatch = useDispatch();
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
   });
+  const [markingPaid, setMarkingPaid] = useState({});
 
   const handleTableChange = (paginationInfo) => {
     setPagination(paginationInfo);
   };
 
+  const handleMarkEBAsPaid = async (record) => {
+    const userId = record.user_id;
+    const bills = userElectricityBills[userId] || [];
+    const unpaidBills = bills.filter((b) => !b.paid && (b.share_id || b.id));
+
+    if (unpaidBills.length === 0) {
+      toast.error("No unpaid electricity bills found for this user");
+      return;
+    }
+
+    setMarkingPaid((prev) => ({ ...prev, [userId]: true }));
+
+    try {
+      // Mark all unpaid shares as paid
+      const promises = unpaidBills.map((bill) => {
+        const shareId = bill.share_id || bill.id;
+        return dispatch(markShareAsPaid(shareId));
+      });
+
+      await Promise.all(promises);
+
+      // Refresh user bills
+      await dispatch(fetchUserBills(userId));
+
+      // Notify parent to refresh payments and statistics
+      if (onEBMarkedAsPaid) {
+        onEBMarkedAsPaid();
+      }
+
+      toast.success(`Successfully marked ${unpaidBills.length} electricity bill(s) as paid`);
+    } catch (error) {
+      console.error("Error marking EB as paid:", error);
+      toast.error("Failed to mark some electricity bills as paid");
+    } finally {
+      setMarkingPaid((prev) => ({ ...prev, [userId]: false }));
+    }
+  };
+
   const getMenuItems = (record) => {
     const { calculatedStatus } = getChargeBreakdown(record);
+    const userId = record.user_id;
+    const bills = userElectricityBills[userId] || [];
+    const unpaidBills = bills.filter((b) => !b.paid && (b.share_id || b.id));
+    const hasUnpaidEB = unpaidBills.length > 0;
+    const isMarkingPaid = markingPaid[userId] || false;
+
     return (
       <Menu>
         <Menu.Item key="view" icon={<EyeOutlined />} onClick={() => onView(record)}>
@@ -24,6 +73,14 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, tariffs 
           <Menu.Item key="process" icon={<CheckCircleOutlined />} onClick={() => onProcess(record)}>
             Process Payment
           </Menu.Item>
+        )}
+        {hasUnpaidEB && (
+          <>
+            <Menu.Divider />
+            <Menu.Item key="markEBPaid" icon={<DollarOutlined />} onClick={() => handleMarkEBAsPaid(record)} disabled={isMarkingPaid}>
+              {isMarkingPaid ? "Marking as Paid..." : `Mark as Paid EB (${unpaidBills.length})`}
+            </Menu.Item>
+          </>
         )}
         <Menu.Divider />
         {/* <Menu.Item key="delete" icon={<DeleteOutlined />} danger onClick={() => onDelete(record)}>
@@ -83,8 +140,10 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, tariffs 
 
   const getChargeBreakdown = (record) => {
     const tariff = tariffLookup[record.tariff_id] || {};
-    const rentBase = Number(tariff.fixed_fee ?? 0);
-    // For rent, use tariff fixed_fee if available, otherwise use amount_due (calculated from current tariff)
+    // Use fixed_fee and variable_fee directly from payment record (sent by backend)
+    // Fall back to tariff lookup for backward compatibility
+    const rentBase = Number(record.fixed_fee ?? tariff.fixed_fee ?? 0);
+    // For rent, use fixed_fee from record/tariff if available, otherwise use amount_due (calculated from current tariff)
     // Note: stored_amount_due is the remaining balance after payments, not the original rent amount
     const rent = rentBase > 0 ? rentBase : record.rent || Number(record.amount_due ?? 0);
 
@@ -100,29 +159,34 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, tariffs 
     // For total calculation: use total EB amount (paid + unpaid), or 0 if no actual bills
     const ebTotal = totalEBAmount > 0 ? totalEBAmount : ebDueFromApi !== undefined ? ebDueFromApi : 0;
 
-    // Calculate total: rent (fixed_fee) + actual electricity bills only
-    // Note: variable_fee from tariff is NOT included in total - only actual electricity bills are added
-    // The backend amount_due includes variable_fee, but we want to show only fixed_fee + actual EB
-    const total = rent + ebTotal;
+    // Get variable_fee from payment record (sent by backend) or tariff lookup (fallback)
+    // This represents the base electricity/utility charge
+    const variableFee = Number(record.variable_fee ?? tariff.variable_fee ?? 0);
+
+    // Calculate total: rent (fixed_fee) + variable_fee + actual electricity bills
+    // This matches the backend's amount_due which includes fixed_fee + variable_fee
+    // The backend balance_payable_amount includes both fixed_fee and variable_fee, so our total should too
+    const total = rent + variableFee + ebTotal;
 
     // Use balance_payable_amount from API for remaining balance (most accurate)
     // This field correctly shows 0 for paid payments and actual remaining for due payments
     const rentRemainingFromApi = Number(record.balance_payable_amount ?? 0);
 
-    // Calculate rent paid: if status is paid, rent is fully paid; otherwise use remaining calculation
-    // For paid payments: rentPaid = rent (full amount)
-    // For due payments: rentPaid = rent - rent portion of remaining balance
-    // Since balance_payable_amount includes both fixed_fee and variable_fee, we calculate the rent portion
-    const variableFee = Number(tariff.variable_fee || 0);
-    const totalBaseAmount = rent + variableFee; // fixed_fee + variable_fee
-    const rentRemaining = totalBaseAmount > 0 ? (rent / totalBaseAmount) * rentRemainingFromApi : 0;
-    const rentPaid = record.status === "paid" ? rent : Math.max(rent - rentRemaining, 0);
-
-    const totalPaid = rentPaid + paidEBAmount;
-
     // Use balance_payable_amount from API + unpaid EB for remaining
     // This ensures we show the correct remaining balance from the backend
     const remaining = rentRemainingFromApi + unpaidEBAmount;
+
+    // Calculate total paid amount: Total Amount - Remaining Amount
+    // This is the correct and simplest way to calculate paid amount
+    // For due payments: totalPaid = total - remaining
+    // For paid payments: totalPaid = total (since remaining is 0)
+    const totalPaid = total - remaining;
+
+    // Calculate rent portion of paid amount proportionally (for display purposes)
+    // This shows how much of the rent portion (fixed_fee) was paid
+    const totalBaseAmount = rent + variableFee; // fixed_fee + variable_fee
+    const totalRentAndVariablePaid = totalBaseAmount - rentRemainingFromApi;
+    const rentPaid = totalBaseAmount > 0 ? (rent / totalBaseAmount) * totalRentAndVariablePaid : 0;
 
     // Status: use API status if available, otherwise calculate based on remaining
     // If balance_payable_amount is 0 and no unpaid EB, status is paid
@@ -149,6 +213,15 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, tariffs 
       render: (_, record) => {
         const { rent } = getChargeBreakdown(record);
         return <span>{formatCurrency(rent)}</span>;
+      },
+    },
+    {
+      title: "Variable Fee",
+      key: "variableFee",
+      render: (_, record) => {
+        const tariff = tariffLookup[record.tariff_id] || {};
+        const variableFee = Number(record.variable_fee ?? tariff.variable_fee ?? 0);
+        return <span>{formatCurrency(variableFee)}</span>;
       },
     },
     {

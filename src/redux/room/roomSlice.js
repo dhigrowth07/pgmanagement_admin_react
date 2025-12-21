@@ -105,6 +105,16 @@ export const deleteRoom = createAsyncThunk("room/deleteRoom", async (id, { dispa
   }
 });
 
+export const getRoomById = createAsyncThunk("room/getRoomById", async (id, { rejectWithValue }) => {
+  try {
+    const response = await roomService.getRoomById(id);
+    return response.data.data;
+  } catch (error) {
+    const errorData = handleApiError(error);
+    return rejectWithValue(errorData);
+  }
+});
+
 // Tariff Thunks
 export const addTariff = createAsyncThunk("room/addTariff", async (data, { dispatch, rejectWithValue }) => {
   try {

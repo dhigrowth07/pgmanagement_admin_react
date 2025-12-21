@@ -12,6 +12,7 @@ export const deleteBlock = (id) => api.delete(`/api/v1/blocks/${id}`);
 
 // --- Room APIs ---
 export const getAllRooms = () => api.get('/api/v1/rooms');
+export const getRoomById = (id) => api.get(`/api/v1/rooms/${id}`);
 export const createRoom = (data) => api.post('/api/v1/rooms', data);
 export const updateRoom = (id, data) => api.put(`/api/v1/rooms/${id}`, data);
 export const deleteRoom = (id) => api.delete(`/api/v1/rooms/${id}`);

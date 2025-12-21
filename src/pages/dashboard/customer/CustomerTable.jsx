@@ -79,9 +79,9 @@ const CustomerTable = ({
 
         {record.room_id && (
           <>
-            <Menu.Item key="tariff" icon={<SwapOutlined />} onClick={() => onChangeTariff(record)}>
+            {/* <Menu.Item key="tariff" icon={<SwapOutlined />} onClick={() => onChangeTariff(record)}>
               Change Tariff
-            </Menu.Item>
+            </Menu.Item> */}
             <Menu.Item key="advance" icon={<DollarCircleOutlined />} onClick={() => onUpdateAdvance(record)}>
               Update Advance
             </Menu.Item>

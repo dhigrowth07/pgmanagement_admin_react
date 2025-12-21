@@ -201,6 +201,30 @@ const PaymentManagementPage = () => {
         onDelete={(record) => openModal("delete", record)}
         tariffs={tariffs}
         userElectricityBills={userElectricityBills}
+        onEBMarkedAsPaid={() => {
+          // Refresh payments, statistics, and user electricity bills
+          dispatch(fetchPayments());
+          if (isPaymentEnabled) {
+            dispatch(fetchStatistics());
+          }
+          // Re-fetch electricity bills for all users
+          const fetchBillsForUsers = async () => {
+            const billsMap = {};
+            const uniqueUserIds = [...new Set(payments.map((p) => p.user_id).filter(Boolean))];
+            for (const userId of uniqueUserIds) {
+              try {
+                const result = await dispatch(fetchUserBills(userId));
+                if (result.payload && !result.error) {
+                  billsMap[userId] = result.payload;
+                }
+              } catch (error) {
+                console.error(`Error fetching bills for user ${userId}:`, error);
+              }
+            }
+            setUserElectricityBills(billsMap);
+          };
+          fetchBillsForUsers();
+        }}
       />
 
       <CreatePaymentModal

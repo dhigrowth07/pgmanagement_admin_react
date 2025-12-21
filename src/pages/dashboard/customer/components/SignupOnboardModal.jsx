@@ -1,10 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Modal, Form, Input, Button, Alert, Row, Col, DatePicker, Select, Upload, Avatar, Typography, message } from "antd";
 import { UploadOutlined, UserOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { customerNameRules, customerEmailRules, customerPhoneRules, customerPasswordRules, emergencyPhoneRules, dobRules, genderRules } from "../../../../utils/validators";
-import { selectAllRooms } from "../../../../redux/room/roomSlice";
-import { useSelector } from "react-redux";
+import { selectAllRooms, selectAllBlocks, fetchRoomsData } from "../../../../redux/room/roomSlice";
+import { useSelector, useDispatch } from "react-redux";
+import { generateCustomerPDF } from "../../../../utils/pdfGenerator";
+import { selectUser } from "../../../../redux/auth/authSlice";
+import { getTermsAndConditions } from "../../../../services/tenantAdminsService";
+import { resizeSignatureImage, imageToDataURL } from "../../../../utils/imageResizer";
 
 const { Option } = Select;
 const { Text } = Typography;
@@ -14,18 +18,50 @@ const SignupOnboardModal = ({ visible, onCancel, onSubmit, loading, error }) => 
   const [profileImageFileList, setProfileImageFileList] = useState([]);
   const [idProofFileList, setIdProofFileList] = useState([]);
   const [profileImagePreview, setProfileImagePreview] = useState(null);
+  const [signatureFileList, setSignatureFileList] = useState([]);
+  const [signaturePreview, setSignaturePreview] = useState(null);
+  const [termsAndConditions, setTermsAndConditions] = useState(null);
+  const [loadingTerms, setLoadingTerms] = useState(false);
   const rooms = useSelector(selectAllRooms);
+  const blocks = useSelector(selectAllBlocks);
+  const user = useSelector(selectUser);
+  const dispatch = useDispatch();
 
+  // Fetch terms and conditions and rooms when modal opens
   useEffect(() => {
     if (visible) {
       form.resetFields();
       setProfileImageFileList([]);
       setIdProofFileList([]);
       setProfileImagePreview(null);
-    }
-  }, [visible, form]);
+      setSignatureFileList([]);
+      setSignaturePreview(null);
+      setTermsAndConditions(null);
 
-  const handleFinish = (values) => {
+      // Fetch rooms data
+      dispatch(fetchRoomsData());
+
+      // Fetch terms and conditions
+      const fetchTermsAndConditions = async () => {
+        setLoadingTerms(true);
+        try {
+          const response = await getTermsAndConditions();
+          if (response.data?.status === 200 && response.data?.data?.terms_and_conditions) {
+            setTermsAndConditions(response.data.data.terms_and_conditions);
+          }
+        } catch (error) {
+          console.error("Error fetching terms and conditions:", error);
+          // Don't show error to user, just log it - PDF will be generated without terms if fetch fails
+        } finally {
+          setLoadingTerms(false);
+        }
+      };
+
+      fetchTermsAndConditions();
+    }
+  }, [visible, form, dispatch]);
+
+  const handleFinish = async (values) => {
     // Validate ID proofs before submission
     if (idProofFileList.length === 0) {
       form.setFields([
@@ -78,7 +114,58 @@ const SignupOnboardModal = ({ visible, onCancel, onSubmit, loading, error }) => 
       }
     });
 
-    onSubmit(formData);
+    // Process signature image if uploaded (resize and convert to base64 for PDF)
+    let signatureDataURL = null;
+    if (signatureFileList.length > 0 && signatureFileList[0].originFileObj) {
+      try {
+        const signatureFile = signatureFileList[0].originFileObj;
+        // Resize signature to appropriate size (max 200x80 for signature)
+        const resizedSignature = await resizeSignatureImage(signatureFile, 200, 80, 0.9);
+        // Convert to base64 data URL for PDF
+        signatureDataURL = await imageToDataURL(resizedSignature);
+      } catch (signatureError) {
+        console.error("Error processing signature image:", signatureError);
+        message.warning("Failed to process signature image. PDF will be generated without signature.");
+      }
+    }
+
+    // Prepare customer data object for PDF generation
+    const customerDataForPDF = {
+      name: values.name?.trim() || "",
+      email: values.email?.trim() || "",
+      phone: values.phone?.trim() || "",
+      gender: values.gender?.toLowerCase() || "",
+      dob: values.dob || null, // Keep as dayjs object for PDF generator
+      emergency_number_one: values.emergency_number_one?.trim() || "",
+      emergency_number_two: values.emergency_number_two?.trim() || "",
+      room_number: values.room_number?.trim() || "",
+      advance_amount: values.advance_amount !== undefined && values.advance_amount !== null && values.advance_amount !== "" ? values.advance_amount : 0,
+      id_proofs: idProofFileList,
+      profile_image: profileImageFileList.length > 0,
+    };
+
+    // Generate PDF and add it to FormData as an ID proof (without downloading)
+    let pdfResult = null;
+    try {
+      pdfResult = generateCustomerPDF(customerDataForPDF, {
+        tenantName: user?.tenant_name || "PG Management",
+        autoDownload: false, // Don't download yet, wait for successful response
+        termsAndConditions: termsAndConditions, // Pass terms and conditions to PDF generator
+        signature: signatureDataURL || undefined, // Pass signature image data URL
+      });
+
+      // Add the generated PDF file to FormData as an ID proof
+      if (pdfResult && pdfResult.file) {
+        formData.append("id_proofs", pdfResult.file);
+        console.log("PDF added to FormData as ID proof:", pdfResult.fileName);
+      }
+    } catch (pdfError) {
+      console.error("Error generating PDF for upload:", pdfError);
+      // Continue with submission even if PDF generation fails
+    }
+
+    // Pass formData, customerData, and pdfResult to onSubmit
+    onSubmit(formData, customerDataForPDF, pdfResult);
   };
 
   const handleProfileImageChange = (info) => {
@@ -122,8 +209,112 @@ const SignupOnboardModal = ({ visible, onCancel, onSubmit, loading, error }) => 
     });
   };
 
-  // Get available rooms (vacant rooms)
-  const availableRooms = rooms.filter((room) => room.current_occupancy < room.capacity);
+  const handleSignatureChange = async (info) => {
+    const fileList = Array.isArray(info) ? info : info.fileList;
+
+    // Validate signature file
+    if (fileList.length > 0) {
+      const file = fileList[0];
+      if (file.originFileObj) {
+        // Validate file type (images only, no PDF)
+        const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+        if (!allowedTypes.includes(file.originFileObj.type)) {
+          message.error("Signature must be an image file (JPEG, PNG, or WebP)");
+          setSignatureFileList([]);
+          setSignaturePreview(null);
+          return;
+        }
+
+        // Validate file size (max 5MB)
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.originFileObj.size > maxSize) {
+          message.error("Signature image must be less than 5MB");
+          setSignatureFileList([]);
+          setSignaturePreview(null);
+          return;
+        }
+
+        // Resize and preview signature
+        try {
+          const resizedSignature = await resizeSignatureImage(file.originFileObj, 200, 80, 0.9);
+          const previewURL = await imageToDataURL(resizedSignature);
+          setSignaturePreview(previewURL);
+          setSignatureFileList([{ ...file, originFileObj: resizedSignature }]);
+        } catch (error) {
+          console.error("Error processing signature:", error);
+          message.error("Failed to process signature image");
+          setSignatureFileList([]);
+          setSignaturePreview(null);
+        }
+      } else if (file.url) {
+        setSignaturePreview(file.url);
+        setSignatureFileList(fileList);
+      }
+    } else {
+      setSignaturePreview(null);
+      setSignatureFileList([]);
+    }
+  };
+
+  // Group rooms by blocks (only show rooms that belong to existing blocks)
+  const groupedRooms = useMemo(() => {
+    if (!blocks || !rooms) return [];
+
+    // Get all block IDs that exist
+    const existingBlockIds = new Set((blocks || []).map((block) => block.block_id));
+
+    // Group rooms by existing blocks
+    const groupedByBlocks = (blocks || [])
+      .map((block) => {
+        const blockRooms = (rooms || []).filter((room) => {
+          if (room.block_id !== block.block_id) return false;
+          // Only show rooms with available beds
+          return room.current_occupancy < room.capacity;
+        });
+
+        return {
+          label: block.block_name || "Unassigned",
+          options: blockRooms.map((room) => {
+            const blockName = room.block_name || block.block_name || "";
+            const availableBeds = (room.capacity || 0) - (room.current_occupancy || 0);
+            const label = blockName
+              ? `${blockName} - Room ${room.room_number} (${availableBeds} bed${availableBeds !== 1 ? "s" : ""} available)`
+              : `Room ${room.room_number} (${availableBeds} bed${availableBeds !== 1 ? "s" : ""} available)`;
+
+            return {
+              label,
+              value: room.room_number, // Using room_number as value (for backend API compatibility)
+            };
+          }),
+        };
+      })
+      .filter((group) => group.options.length > 0);
+
+    // Also include rooms with no block_id (null or undefined)
+    const unassignedRooms = (rooms || []).filter((room) => {
+      // Only show rooms with available beds
+      if (room.current_occupancy >= room.capacity) return false;
+      // Room has no block_id
+      return !room.block_id;
+    });
+
+    const result = [...groupedByBlocks];
+    if (unassignedRooms.length > 0) {
+      const unassignedGroup = {
+        label: "Unassigned",
+        options: unassignedRooms.map((room) => {
+          const availableBeds = (room.capacity || 0) - (room.current_occupancy || 0);
+          return {
+            label: `Room ${room.room_number} (${availableBeds} bed${availableBeds !== 1 ? "s" : ""} available)`,
+            value: room.room_number,
+          };
+        }),
+      };
+      result.push(unassignedGroup);
+    }
+
+    return result;
+  }, [blocks, rooms]);
 
   return (
     <Modal centered title="Add New Customer (Signup & Onboard)" open={visible} onCancel={onCancel} footer={null} maskClosable={false} width={700}>
@@ -283,13 +474,7 @@ const SignupOnboardModal = ({ visible, onCancel, onSubmit, loading, error }) => 
         <Row gutter={16}>
           <Col span={12}>
             <Form.Item name="room_number" label="Room Number" rules={[{ required: true, message: "Please select a room" }]}>
-              <Select placeholder="Select room" showSearch optionFilterProp="children">
-                {availableRooms.map((room) => (
-                  <Option key={room.room_id} value={room.room_number}>
-                    {room.room_number} ({room.current_occupancy}/{room.capacity})
-                  </Option>
-                ))}
-              </Select>
+              <Select placeholder="Select room" showSearch optionFilterProp="label" options={groupedRooms} />
             </Form.Item>
           </Col>
           <Col span={12}>
@@ -355,6 +540,50 @@ const SignupOnboardModal = ({ visible, onCancel, onSubmit, loading, error }) => 
           <Text type="secondary" style={{ fontSize: 12 }}>
             At least 1 file required. Max 5 files, 10MB each. Supported: JPEG, PNG, WebP, PDF
           </Text>
+        </Form.Item>
+
+        {/* Signature Upload */}
+        <Form.Item name="signature" label="Signature (Optional)" valuePropName="fileList" getValueFromEvent={(e) => (Array.isArray(e) ? e : e && e.fileList)}>
+          <div>
+            <Upload
+              fileList={signatureFileList}
+              beforeUpload={() => false}
+              onChange={handleSignatureChange}
+              onRemove={() => {
+                setSignatureFileList([]);
+                setSignaturePreview(null);
+              }}
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              maxCount={1}
+              listType="text"
+            >
+              <Button icon={<UploadOutlined />}>Upload Signature</Button>
+            </Upload>
+            {signaturePreview && (
+              <div style={{ marginTop: 10, textAlign: "center" }}>
+                <div style={{ marginBottom: 5 }}>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    Signature Preview:
+                  </Text>
+                </div>
+                <img
+                  src={signaturePreview}
+                  alt="Signature preview"
+                  style={{
+                    maxWidth: "200px",
+                    maxHeight: "80px",
+                    border: "1px solid #d9d9d9",
+                    borderRadius: "4px",
+                    padding: "4px",
+                    backgroundColor: "#fff",
+                  }}
+                />
+              </div>
+            )}
+            <Text type="secondary" style={{ fontSize: 12, display: "block", marginTop: 8 }}>
+              Max 5MB. Supported: JPEG, PNG, WebP. Image will be automatically resized for PDF.
+            </Text>
+          </div>
         </Form.Item>
 
         <Form.Item style={{ marginTop: 24, textAlign: "right" }}>

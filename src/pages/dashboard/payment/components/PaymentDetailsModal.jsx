@@ -74,13 +74,17 @@ const PaymentDetailsModal = ({ visible, onCancel, payment }) => {
       <Title level={5} style={{ marginTop: 20 }}>
         Transaction History
       </Title>
-      {status === "loading_transactions" ? (
-        <div className="text-center p-4">
-          <Spin />
-        </div>
-      ) : (
-        <Table columns={transactionColumns} dataSource={transactions} rowKey="transaction_id" pagination={false} size="small" />
-      )}
+      <Table
+        columns={transactionColumns}
+        dataSource={transactions}
+        rowKey="transaction_id"
+        pagination={false}
+        size="small"
+        loading={status === "loading_transactions"}
+        locale={{
+          emptyText: "No transactions found",
+        }}
+      />
     </Modal>
   );
 };

@@ -20,7 +20,12 @@ const CustomerFormModal = ({ mode, visible, onCancel, customer, onSubmit, loadin
   const groupedRooms = useMemo(() => {
     if (!blocks?.length || !rooms?.length) return [];
     const availableRooms = rooms.filter((room) => room.current_occupancy < room.capacity);
-    return blocks
+    
+    // Get all block IDs that exist
+    const existingBlockIds = new Set(blocks.map((block) => block.block_id));
+    
+    // Group rooms by existing blocks (only show rooms that belong to existing blocks)
+    const groupedByBlocks = blocks
       .map((block) => ({
         label: block.block_name,
         options: availableRooms
@@ -31,6 +36,22 @@ const CustomerFormModal = ({ mode, visible, onCancel, customer, onSubmit, loadin
           })),
       }))
       .filter((group) => group.options.length > 0);
+    
+    // Also include rooms with no block_id
+    const unassignedRooms = availableRooms.filter((room) => !room.block_id);
+    
+    const result = [...groupedByBlocks];
+    if (unassignedRooms.length > 0) {
+      result.push({
+        label: "Unassigned",
+        options: unassignedRooms.map((room) => ({
+          label: room.room_number,
+          value: room.room_id,
+        })),
+      });
+    }
+    
+    return result;
   }, [blocks, rooms]);
 
   /** @type {[Array<any>, Function]} */

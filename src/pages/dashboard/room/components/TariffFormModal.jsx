@@ -26,10 +26,21 @@ const TariffFormModal = ({ mode, visible, onCancel, tariff, onSubmit, loading })
       // Convert fee values to numbers (backend expects numbers, not strings)
       const payload = {
         ...values,
-        fixed_fee: typeof values.fixed_fee === "string" ? parseFloat(values.fixed_fee) : Number(values.fixed_fee),
-        variable_fee:
-          values.variable_fee !== undefined && values.variable_fee !== null ? (typeof values.variable_fee === "string" ? parseFloat(values.variable_fee) : Number(values.variable_fee)) : undefined,
       };
+
+      // In edit mode, preserve fixed_fee and variable_fee from the original tariff
+      // since these fields are hidden and won't be in the form values
+      if (isEditMode && tariff) {
+        payload.fixed_fee = typeof tariff.fixed_fee === "string" ? parseFloat(tariff.fixed_fee) : Number(tariff.fixed_fee);
+        payload.variable_fee =
+          tariff.variable_fee !== undefined && tariff.variable_fee !== null ? (typeof tariff.variable_fee === "string" ? parseFloat(tariff.variable_fee) : Number(tariff.variable_fee)) : undefined;
+      } else {
+        // In create mode, use the form values
+        payload.fixed_fee = typeof values.fixed_fee === "string" ? parseFloat(values.fixed_fee) : Number(values.fixed_fee);
+        payload.variable_fee =
+          values.variable_fee !== undefined && values.variable_fee !== null ? (typeof values.variable_fee === "string" ? parseFloat(values.variable_fee) : Number(values.variable_fee)) : undefined;
+      }
+
       onSubmit(payload);
     }
   };
@@ -40,18 +51,20 @@ const TariffFormModal = ({ mode, visible, onCancel, tariff, onSubmit, loading })
         <Form.Item name="tariff_name" label="Tariff Name" rules={[{ required: true, message: "Please enter a name" }]}>
           <Input placeholder="e.g., Standard Single AC" />
         </Form.Item>
-        <Row gutter={16}>
-          <Col span={12}>
-            <Form.Item name="fixed_fee" label="Fixed Fee (Rent)" rules={[{ required: true, message: "Please enter a fixed fee" }]}>
-              <InputNumber style={{ width: "100%" }} min={0} addonBefore="₹" />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item name="variable_fee" label="Variable Fee (Optional)">
-              <InputNumber style={{ width: "100%" }} min={0} addonBefore="₹" />
-            </Form.Item>
-          </Col>
-        </Row>
+        {!isEditMode && (
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="fixed_fee" label="Fixed Fee (Rent)" rules={[{ required: true, message: "Please enter a fixed fee" }]}>
+                <InputNumber style={{ width: "100%" }} min={0} addonBefore="₹" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="variable_fee" label="Variable Fee (Optional)">
+                <InputNumber style={{ width: "100%" }} min={0} addonBefore="₹" />
+              </Form.Item>
+            </Col>
+          </Row>
+        )}
         <Form.Item name="description" label="Description">
           <Input.TextArea rows={2} placeholder="e.g., Includes electricity and maintenance" />
         </Form.Item>

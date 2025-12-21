@@ -24,6 +24,8 @@ import {
   cancelVacation,
 } from "../../../redux/customer/customerSlice";
 import { signupOnboardCustomer } from "../../../services/customerService";
+import { selectUser } from "../../../redux/auth/authSlice";
+import { generateCustomerPDF } from "../../../utils/pdfGenerator";
 
 import { selectAllRooms, selectAllBlocks, selectAllTariffs, fetchRoomsData } from "../../../redux/room/roomSlice";
 
@@ -52,6 +54,7 @@ const CustomerPage = () => {
   const blocks = useSelector(selectAllBlocks);
   const tariffs = useSelector(selectAllTariffs);
   const bulkImportResult = useSelector(selectBulkImportResult);
+  const user = useSelector(selectUser);
 
   const [modalState, setModalState] = useState({ type: null, data: null });
   const [onboardMode, setOnboardMode] = useState("full");
@@ -146,12 +149,24 @@ const CustomerPage = () => {
 
   const closeModal = () => setModalState({ type: null, data: null });
 
-  const handleSignupSubmit = async (formData) => {
+  const handleSignupSubmit = async (formData, customerDataForPDF = null, pdfResult = null) => {
     setIsSignupLoading(true);
     try {
       const response = await signupOnboardCustomer(formData);
       if (response.data?.status === 201 || response.status === 201) {
         toast.success(response.data?.msg || "Customer created successfully!");
+
+        // Download PDF only after successful customer creation
+        if (pdfResult && pdfResult.doc && pdfResult.fileName) {
+          try {
+            pdfResult.doc.save(pdfResult.fileName);
+            toast.success("PDF generated and downloaded successfully!");
+          } catch (pdfError) {
+            console.error("Error downloading PDF:", pdfError);
+            toast.error("Customer created successfully, but PDF download failed.");
+          }
+        }
+
         dispatch(fetchAllCustomers()); // Refresh customer list
         closeModal();
       } else {
