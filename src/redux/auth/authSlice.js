@@ -19,7 +19,8 @@ export const loginUser = createAsyncThunk("auth/loginUser", async (credentials, 
   } catch (error) {
     const errorData = handleApiError(error);
     const errorMsg = errorData.msg || "Login failed";
-    toast.error(errorMsg);
+    // Don't show toast here - let the component handle error display
+    // This prevents duplicate toast messages
     return rejectWithValue(errorMsg);
   }
 });

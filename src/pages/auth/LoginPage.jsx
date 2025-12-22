@@ -1,18 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { loginUser, selectAuthStatus, selectAuthError, selectIsAuthenticated, selectIsAdmin } from "../../redux/auth/authSlice";
-import { Button, Form, Input, Alert, Spin } from "antd";
-import { LockOutlined, IdcardOutlined, MailOutlined } from "@ant-design/icons";
+import { loginUser, selectAuthStatus, selectIsAuthenticated, selectIsAdmin } from "../../redux/auth/authSlice";
+import { Button, Form, Input, Spin } from "antd";
+import { LockOutlined, MailOutlined } from "@ant-design/icons";
 import toast from "react-hot-toast";
-import { tenantIdRules, adminEmailRules, adminPasswordRules } from "../../utils/validators";
+import { adminEmailRules, adminPasswordRules } from "../../utils/validators";
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
   const authStatus = useSelector(selectAuthStatus);
-  const authError = useSelector(selectAuthError);
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const isAdmin = useSelector(selectIsAdmin);
 
@@ -22,33 +21,30 @@ const LoginPage = () => {
 
   useEffect(() => {
     if (isAuthenticated && isAdmin) {
-      navigate("/dashboard", { replace: true });
+      // Add a small delay to allow toast to be visible before navigation
+      const timer = setTimeout(() => {
+        navigate("/dashboard", { replace: true });
+      }, 500);
+      return () => clearTimeout(timer);
     }
   }, [isAuthenticated, isAdmin, navigate]);
 
   const onFinish = async (values) => {
     // Form validation handles required checks, so we can safely trim values
-    const tenantId = values.tenantId?.trim();
     const email = values.email?.trim();
     const password = values.password?.trim();
 
-    // Store tenant_id in localStorage before login
-    localStorage.setItem("tenant_id", tenantId);
-    console.log("[Login] ✅ Tenant ID stored in localStorage:", tenantId);
-
     setIsSubmitting(true);
     const payload = {
-      tenantId,
       email,
       password,
+      loginWithoutTenantId: true,
     };
 
     try {
-      // Thunk will throw the error message from rejectWithValue on unwrap
       await dispatch(loginUser(payload)).unwrap();
       toast.success("Login Successful!");
     } catch (error) {
-      console.error("[Login] Login failed (caught in component):", error);
       const message = (typeof error === "string" && error) || error?.msg || error?.message || "Login Failed. Please try again.";
       toast.error(message);
     } finally {
@@ -66,10 +62,6 @@ const LoginPage = () => {
         )} */}
 
         <Form form={form} name="login" onFinish={onFinish} layout="vertical" requiredMark="optional">
-          <Form.Item name="tenantId" label="Tenant ID" rules={tenantIdRules}>
-            <Input prefix={<IdcardOutlined />} placeholder="Tenant ID" />
-          </Form.Item>
-
           <Form.Item name="email" label="Admin Email" rules={adminEmailRules}>
             <Input prefix={<MailOutlined />} placeholder="admin@example.com" />
           </Form.Item>

@@ -58,6 +58,7 @@ api.interceptors.request.use(
 
 let isRefreshing = false;
 let failedQueue = [];
+let isLoggingOut = false; // Flag to prevent multiple logout redirects
 
 const processQueue = (error, token = null) => {
   failedQueue.forEach((prom) => {
@@ -95,6 +96,39 @@ api.interceptors.response.use(
 
     // Also skip refresh-token logic for public endpoints (no auth required)
     const isPublicEndpoint = url.includes("/users/signup-onboard") || url.includes("/rooms/public");
+
+    // Handle 403 Forbidden - Admin account inactive or suspended
+    if (error.response?.status === 403 && !isAuthEndpoint && !isPublicEndpoint && !isLoggingOut) {
+      const errorMessage = error.response?.data?.msg || "";
+      
+      // Check if this is an inactive/suspended admin account error
+      if (
+        errorMessage.toLowerCase().includes("inactive") ||
+        errorMessage.toLowerCase().includes("suspended") ||
+        errorMessage.toLowerCase().includes("admin account is inactive")
+      ) {
+        // Set flag to prevent multiple logout redirects
+        isLoggingOut = true;
+        
+        // Show error message
+        toast.error(errorMessage || "Your account has been deactivated. Please contact your administrator.");
+        
+        // Dispatch logout to clear auth state
+        store.dispatch(logout());
+        
+        // Clear token from localStorage if it exists
+        localStorage.removeItem("token");
+        
+        // Small delay to ensure logout state is updated before redirect
+        setTimeout(() => {
+          // Redirect to login page
+          // Use window.location to ensure a full page reload and clear any cached state
+          window.location.href = "/login";
+        }, 100);
+        
+        return Promise.reject(error);
+      }
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint && !isPublicEndpoint) {
       if (isRefreshing) {
