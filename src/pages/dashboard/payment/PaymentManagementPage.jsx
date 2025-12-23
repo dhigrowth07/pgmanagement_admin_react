@@ -143,11 +143,11 @@ const PaymentManagementPage = () => {
         </Col>
         <Col xs={24} sm={12} className="md:text-right text-center">
           <Space wrap>
-            {/* <Tooltip title="Manually trigger monthly payment generation for all active users">
+            <Tooltip title="Manually trigger monthly payment generation for all active users">
               <Button icon={<SyncOutlined spin={isActionLoading} />} onClick={handleGeneratePayments} disabled={isActionLoading}>
                 Generate Payments
               </Button>
-            </Tooltip> */}
+            </Tooltip>
             <Tooltip title="Create a manual payment for a specific customer (override system-generated amounts)">
               <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal("create")}>
                 Add Manual Payment
