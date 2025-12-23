@@ -143,14 +143,16 @@ const PaymentManagementPage = () => {
         </Col>
         <Col xs={24} sm={12} className="md:text-right text-center">
           <Space wrap>
-            <Tooltip title="Manually trigger monthly payment generation for all active users">
+            {/* <Tooltip title="Manually trigger monthly payment generation for all active users">
               <Button icon={<SyncOutlined spin={isActionLoading} />} onClick={handleGeneratePayments} disabled={isActionLoading}>
                 Generate Payments
               </Button>
+            </Tooltip> */}
+            <Tooltip title="Create a manual payment for a specific customer (override system-generated amounts)">
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal("create")}>
+                Add Manual Payment
+              </Button>
             </Tooltip>
-            {/* <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal('create')}>
-              Add Manual Payment
-            </Button> */}
           </Space>
         </Col>
       </Row>
@@ -199,6 +201,7 @@ const PaymentManagementPage = () => {
         onView={(record) => openModal("view", record)}
         onProcess={(record) => openModal("process", record)}
         onDelete={(record) => openModal("delete", record)}
+        onCreateManual={(record) => openModal("create", record)}
         tariffs={tariffs}
         userElectricityBills={userElectricityBills}
         onEBMarkedAsPaid={() => {
@@ -234,6 +237,17 @@ const PaymentManagementPage = () => {
         loading={isActionLoading}
         customers={customers.filter((c) => c.status === "Active")}
         tariffs={tariffs}
+        initialValues={
+          modalState.data
+            ? {
+                user_id: modalState.data.user_id,
+                tariff_id: modalState.data.tariff_id,
+                amount_due: Number(modalState.data.balance_payable_amount ?? modalState.data.stored_amount_due ?? modalState.data.amount_due ?? 0),
+                payment_cycle_start_date: modalState.data.payment_cycle_start_date,
+                due_date: modalState.data.due_date,
+              }
+            : undefined
+        }
       />
 
       <ProcessPaymentModal visible={modalState.type === "process"} onCancel={closeModal} onSubmit={handleProcessSubmit} loading={isActionLoading} payment={modalState.data} />

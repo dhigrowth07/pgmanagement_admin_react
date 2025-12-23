@@ -118,3 +118,20 @@ export const updateUserProfileByAdmin = (userId, formData) => {
 export const refreshToken = () => {
   return api.post(`${baseURL}/refreshToken`);
 };
+
+/**
+ * Switch to another admin account (Main Admin only)
+ * @param {string} adminId - Target admin ID to switch to
+ * @returns {Promise} - API response containing new token and admin data
+ */
+export const switchToAdmin = (adminId) => {
+  return api.post(`${baseURL}/switch-admin/${adminId}`);
+};
+
+/**
+ * Switch back to original admin account
+ * @returns {Promise} - API response containing original token and admin data
+ */
+export const switchBack = () => {
+  return api.post(`${baseURL}/switch-back`);
+};

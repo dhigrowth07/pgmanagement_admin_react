@@ -6,7 +6,7 @@ import { markShareAsPaid, fetchUserBills } from "../../../redux/electricity/elec
 import toast from "react-hot-toast";
 import dayjs from "dayjs";
 
-const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, tariffs = [], userElectricityBills = {}, onEBMarkedAsPaid }) => {
+const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, onCreateManual, tariffs = [], userElectricityBills = {}, onEBMarkedAsPaid }) => {
   const dispatch = useDispatch();
   const [pagination, setPagination] = useState({
     current: 1,
@@ -69,6 +69,11 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, tariffs 
         <Menu.Item key="view" icon={<EyeOutlined />} onClick={() => onView(record)}>
           View Details
         </Menu.Item>
+        {onCreateManual && (
+          <Menu.Item key="manualPayment" icon={<DollarOutlined />} onClick={() => onCreateManual(record)}>
+            Add Manual Payment
+          </Menu.Item>
+        )}
         {calculatedStatus === "due" && (
           <Menu.Item key="process" icon={<CheckCircleOutlined />} onClick={() => onProcess(record)}>
             Process Payment

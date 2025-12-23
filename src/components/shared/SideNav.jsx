@@ -7,10 +7,10 @@ import toast from "react-hot-toast";
 const { Sider } = Layout;
 const { SubMenu } = Menu;
 
-import { BarChart3, Users, AlertTriangle, Building, Utensils, User, CreditCard, Settings, BuildingIcon, ShieldAlert, Pencil, UserX, Receipt } from "lucide-react";
+import { BarChart3, Users, AlertTriangle, Building, Utensils, User, CreditCard, Settings, BuildingIcon, ShieldAlert, Pencil, UserX, Receipt, UserCog } from "lucide-react";
 import { FiSettings } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
-import { logout, selectUser } from "../../redux/auth/authSlice";
+import { logout, selectUser, selectIsMainAdmin } from "../../redux/auth/authSlice";
 import { selectAllIssues, selectIssueStatus } from "../../redux/issue/issueSlice";
 
 // Base menu items with their feature permission mappings
@@ -64,13 +64,13 @@ const BASE_MENU_ITEMS = [
     type: "item",
     permission: "is_payment_enabled",
   },
-  // {
-  //   key: "electricity",
-  //   icon: <Building size={18} />,
-  //   label: "Electricity",
-  //   type: "item",
-  //   permission: "is_electricity_enabled",
-  // },
+  {
+    key: "electricity",
+    icon: <Building size={18} />,
+    label: "Electricity",
+    type: "item",
+    permission: "is_electricity_enabled",
+  },
   // {
   //   key: "reports",
   //   icon: <BarChart3 size={18} />,
@@ -84,6 +84,14 @@ const BASE_MENU_ITEMS = [
     label: "Expense Management",
     type: "item",
     permission: "is_expense_management_enabled",
+  },
+  {
+    key: "admin-management",
+    icon: <UserCog size={18} />,
+    label: "Admin Management",
+    type: "item",
+    permission: null, // Visibility controlled by isMainAdmin check
+    requiresMainAdmin: true,
   },
   // {
   //   key: "settings",
@@ -111,6 +119,7 @@ export default function Sidebar({ onSelectMenu, selectedKey }) {
   const toggleCollapsed = () => setCollapsed(!collapsed);
   const dispatch = useDispatch();
   const user = useSelector(selectUser);
+  const isMainAdmin = useSelector(selectIsMainAdmin);
   const issues = useSelector(selectAllIssues);
   const issueStatus = useSelector(selectIssueStatus);
   const unresolvedIssuesCount = useMemo(() => {
@@ -124,19 +133,23 @@ export default function Sidebar({ onSelectMenu, selectedKey }) {
     }, 0);
   }, [issues]);
 
-  // Filter menu items based on feature permissions
+  // Filter menu items based on feature permissions and main admin status
   const filteredMenuItems = useMemo(() => {
     const featurePermissions = user?.feature_permissions || {};
 
     return BASE_MENU_ITEMS.filter((item) => {
-      // If no permission required, always show
+      // Check main admin requirement
+      if (item.requiresMainAdmin && !isMainAdmin) {
+        return false;
+      }
+      // If no permission required, always show (unless main admin check fails)
       if (!item.permission) {
         return true;
       }
       // Check if the feature is enabled
       return featurePermissions[item.permission] === true;
     });
-  }, [user?.feature_permissions]);
+  }, [user?.feature_permissions, isMainAdmin]);
 
   const navigate = useNavigate();
 
@@ -174,7 +187,7 @@ export default function Sidebar({ onSelectMenu, selectedKey }) {
       return (
         <SubMenu key={item.key} icon={item.icon} title={item.label}>
           {item.children.map((child) => (
-            <Menu.Item key={child.key} icon={child.icon}>
+            <Menu.Item style={{ padding: "0 1px" }} key={child.key} icon={child.icon}>
               {child.label}
             </Menu.Item>
           ))}

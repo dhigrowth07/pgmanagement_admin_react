@@ -64,7 +64,7 @@ const ProcessPaymentModal = ({ visible, onCancel, onSubmit, loading, payment }) 
         <Form.Item label="Payment Type" name="paymentType">
           <Radio.Group defaultValue={"full"} onChange={handleTypeChange} value={paymentType}>
             <Radio value="full">Full Payment</Radio>
-            <Radio value="initial">Initial Payment (Custom Amount)</Radio>
+            <Radio value="initial">Partial / Custom Payment (Adjust Due)</Radio>
           </Radio.Group>
         </Form.Item>
 
