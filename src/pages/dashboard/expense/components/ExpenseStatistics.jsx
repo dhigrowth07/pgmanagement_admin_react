@@ -6,7 +6,8 @@ import dayjs from "dayjs";
 const ExpenseStatistics = ({ summary, meta }) => {
   const formatCurrency = (amountCents) => {
     const amount = Number(amountCents || 0) / 100;
-    return `₹${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    // Display without decimal places (e.g., ₹1,000 instead of ₹1,000.00)
+    return `₹${amount.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
 
   const totalAmount = summary?.totalAmountCents || 0;
@@ -176,17 +177,18 @@ const ExpenseStatistics = ({ summary, meta }) => {
               </div>
               <div
                 style={{
-                  width: 48,
-                  height: 48,
+                  width: 32,
+                  height: 32,
                   borderRadius: 12,
                   background: item.style.iconBg,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   flexShrink: 0,
+                  border: "1px solid rgba(255,255,255,0.2)",
                 }}
               >
-                <item.icon size={24} color={item.style.iconColor} />
+                <item.icon size={20} color={item.style.iconColor} />
               </div>
             </div>
           </Card>

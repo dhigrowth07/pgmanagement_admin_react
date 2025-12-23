@@ -222,7 +222,7 @@ const RoomManagementPage = () => {
 
   const roomStats = [
     { label: "Total Rooms", value: stats.totalRooms, icon: Hotel, color: "text-blue-600", bgColor: "bg-blue-100" },
-    { label: "Occupied Rooms", value: stats.occupiedRooms, icon: UserCheck, color: "text-green-600", bgColor: "bg-green-100" },
+    { label: "Full Occupied Rooms", value: stats.occupiedRooms, icon: UserCheck, color: "text-green-600", bgColor: "bg-green-100" },
     { label: "Vacant Rooms", value: stats.vacantRooms, icon: DoorOpen, color: "text-orange-600", bgColor: "bg-orange-100" },
   ];
 
