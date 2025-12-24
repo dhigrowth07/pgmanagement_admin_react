@@ -18,6 +18,7 @@ import {
   ReloadOutlined,
   CalendarOutlined,
   CloseCircleOutlined,
+  FileTextOutlined,
 } from "@ant-design/icons";
 
 const CustomerTable = ({
@@ -36,6 +37,7 @@ const CustomerTable = ({
   onReassign,
   onVacateRoom,
   onCancelVacation,
+  onViewLogs,
 }) => {
   const [pagination, setPagination] = useState({
     current: 1,
@@ -58,6 +60,11 @@ const CustomerTable = ({
         <Menu.Item key="view" icon={<EyeOutlined />} onClick={() => onView(record)}>
           View Details
         </Menu.Item>
+        {onViewLogs && (
+          <Menu.Item key="logs" icon={<FileTextOutlined />} onClick={() => onViewLogs(record)}>
+            View Logs
+          </Menu.Item>
+        )}
         {record.room_id && (
           <Menu.Item key="changeRoom" icon={<SwapOutlined />} onClick={() => onChangeRoom(record)}>
             Change Room

@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
 const { Sider } = Layout;
 const { SubMenu } = Menu;
 
-import { BarChart3, Users, AlertTriangle, Building, Utensils, User, CreditCard, Settings, BuildingIcon, ShieldAlert, Pencil, UserX, Receipt, UserCog } from "lucide-react";
+import { BarChart3, Users, AlertTriangle, Building, Utensils, User, CreditCard, Settings, BuildingIcon, ShieldAlert, Pencil, UserX, Receipt, UserCog, FileText } from "lucide-react";
 import { FiSettings } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { logout, selectUser, selectIsMainAdmin } from "../../redux/auth/authSlice";
@@ -93,20 +93,25 @@ const BASE_MENU_ITEMS = [
     permission: null, // Visibility controlled by isMainAdmin check
     requiresMainAdmin: true,
   },
-  // {
-  //   key: "settings",
-  //   icon: <FiSettings size={18} />,
-  //   label: "Settings",
-  //   type: "group",
-  //   permission: null, // Always visible
-  //   children: [
-  //     {
-  //       key: "edit-profile",
-  //       icon: <Pencil size={18} />,
-  //       label: "Edit Profile",
-  //     },
-  //   ],
-  // },
+  {
+    key: "settings",
+    icon: <FiSettings size={18} />,
+    label: "Settings",
+    type: "group",
+    permission: null, // Always visible
+    children: [
+      // {
+      //   key: "edit-profile",
+      //   icon: <Pencil size={18} />,
+      //   label: "Edit Profile",
+      // },
+      {
+        key: "activity-logs",
+        icon: <FileText size={18} />,
+        label: "Activity Logs",
+      },
+    ],
+  },
 ];
 
 const DEFAULT_SIDEBAR_WIDTH = 250;
@@ -187,7 +192,7 @@ export default function Sidebar({ onSelectMenu, selectedKey }) {
       return (
         <SubMenu key={item.key} icon={item.icon} title={item.label}>
           {item.children.map((child) => (
-            <Menu.Item style={{ padding: "0 1px" }} key={child.key} icon={child.icon}>
+            <Menu.Item key={child.key} icon={child.icon}>
               {child.label}
             </Menu.Item>
           ))}

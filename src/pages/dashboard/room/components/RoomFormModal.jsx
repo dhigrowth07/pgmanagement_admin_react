@@ -59,8 +59,8 @@ const RoomFormModal = ({ mode, visible, onCancel, room, blocks, presets, tariffs
             </Form.Item>
           </Col>
         </Row>
-        <Form.Item name="preset_id" label="Room Preset (Type & Amenities)">
-          <Select placeholder="Optional: Select a preset" allowClear>
+        <Form.Item name="preset_id" label="Room Preset (Type & Amenities)" rules={!isEditMode ? [{ required: true, message: "Please select a room preset" }] : []}>
+          <Select placeholder={isEditMode ? "Optional: Select a preset" : "Select a preset"} allowClear={isEditMode}>
             {presets.map((preset) => (
               <Option key={preset.preset_id} value={preset.preset_id}>
                 {preset.preset_name}

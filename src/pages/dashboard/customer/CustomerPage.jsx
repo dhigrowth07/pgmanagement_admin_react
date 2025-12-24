@@ -41,6 +41,7 @@ import ChangePasswordModal from "./components/ChangePasswordModel";
 import BulkImportModal from "./components/BulkImportModal";
 import AdminProfileUpdateModal from "./components/AdminProfileUpdateModal";
 import AdvanceUpdateModal from "./components/AdvanceUpdateModal";
+import UserActivityLogsModal from "./components/UserActivityLogsModal";
 import toast from "react-hot-toast";
 
 const { Title } = Typography;
@@ -64,6 +65,8 @@ const CustomerPage = () => {
   const [advanceModalVisible, setAdvanceModalVisible] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [isSignupLoading, setIsSignupLoading] = useState(false);
+  const [activityLogsModalVisible, setActivityLogsModalVisible] = useState(false);
+  const [selectedCustomerForLogs, setSelectedCustomerForLogs] = useState(null);
 
   const customerUpdateStatus = useSelector((state) => state.customer.status);
   const isAdminUpdateLoading = customerUpdateStatus === "loading_action";
@@ -241,6 +244,16 @@ const CustomerPage = () => {
     }
   };
 
+  const handleViewLogs = (customer) => {
+    setSelectedCustomerForLogs(customer);
+    setActivityLogsModalVisible(true);
+  };
+
+  const handleCloseActivityLogsModal = () => {
+    setActivityLogsModalVisible(false);
+    setSelectedCustomerForLogs(null);
+  };
+
   return (
     <Card bordered={false}>
       <Row justify="space-between" align="middle" gutter={[16, 16]} style={{ marginBottom: 16 }}>
@@ -336,6 +349,7 @@ const CustomerPage = () => {
         }}
         onVacateRoom={(record) => openModal("vacate", record)}
         onCancelVacation={(record) => openModal("cancelVacation", record)}
+        onViewLogs={handleViewLogs}
       />
 
       <SignupOnboardModal visible={modalState.type === "signup"} onCancel={closeModal} onSubmit={handleSignupSubmit} loading={isSignupLoading} error={null} />
@@ -400,6 +414,12 @@ const CustomerPage = () => {
             : "Are you sure you want to remove this customer from their room? This will also unassign their tariff."
         }
         okText={modalState.type === "delete" ? "Delete" : modalState.type === "vacate" ? "Vacate" : modalState.type === "cancelVacation" ? "Cancel Vacation" : "Remove"}
+      />
+
+      <UserActivityLogsModal
+        visible={activityLogsModalVisible}
+        onCancel={handleCloseActivityLogsModal}
+        customer={selectedCustomerForLogs}
       />
     </Card>
   );

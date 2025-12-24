@@ -12,6 +12,7 @@ import ReportsPage from "../../pages/dashboard/reports/ReportsPage";
 import DeletionRequestsPage from "../../pages/dashboard/deletionRequests/DeletionRequestsPage";
 import ExpenseManagementPage from "../../pages/dashboard/expense/ExpenseManagementPage";
 import AdminManagementPage from "../../pages/dashboard/admin/AdminManagementPage";
+import ActivityLogsPage from "../../pages/dashboard/activityLogs/ActivityLogsPage";
 const { Content: AntContent } = Layout;
 
 const Content = ({ selectedMenu, onMenuChange }) => {
@@ -52,6 +53,9 @@ const Content = ({ selectedMenu, onMenuChange }) => {
       break;
     case "admin-management":
       content = <AdminManagementPage />;
+      break;
+    case "activity-logs":
+      content = <ActivityLogsPage />;
       break;
     default:
       content = <DashboardContents onMenuChange={onMenuChange} />;
