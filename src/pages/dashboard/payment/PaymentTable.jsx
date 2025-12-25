@@ -157,12 +157,18 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, onCreate
     const paidEBAmount = getPaidElectricityAmount(record.user_id);
     const totalEBAmount = getTotalElectricityAmount(record.user_id);
 
-    // For display: show unpaid EB if available, otherwise total EB, otherwise 0 (don't use variable_fee as fallback)
-    const ebDueFromApi = record.eb_due_amount !== undefined ? Number(record.eb_due_amount || 0) : undefined;
-    const ebDisplay = unpaidEBAmount > 0 ? unpaidEBAmount : totalEBAmount > 0 ? totalEBAmount : ebDueFromApi !== undefined ? ebDueFromApi : 0;
+    // Use eb_amount from API - backend correctly matches bills by payment month
+    // Backend query: eb.month = TO_CHAR(payment_cycle_start_date, 'YYYY-MM')
+    // This ensures each payment shows the correct EB bill for its specific month
+    const ebAmountFromApi = record.eb_amount !== undefined ? Number(record.eb_amount || 0) : undefined;
 
-    // For total calculation: use total EB amount (paid + unpaid), or 0 if no actual bills
-    const ebTotal = totalEBAmount > 0 ? totalEBAmount : ebDueFromApi !== undefined ? ebDueFromApi : 0;
+    // Prioritize API value (correctly filtered by payment month)
+    // Fallback to frontend calculation only if API value not available
+    const ebDisplay = ebAmountFromApi !== undefined ? ebAmountFromApi : unpaidEBAmount > 0 ? unpaidEBAmount : totalEBAmount > 0 ? totalEBAmount : 0;
+
+    // For total calculation: use API value (unpaid amount for this payment month)
+    // If API returns 0, check if there's a paid bill to show in total
+    const ebTotal = ebAmountFromApi !== undefined ? ebAmountFromApi : totalEBAmount > 0 ? totalEBAmount : 0;
 
     // Get variable_fee from payment record (sent by backend) or tariff lookup (fallback)
     // This represents the base electricity/utility charge
@@ -178,8 +184,9 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, onCreate
     const rentRemainingFromApi = Number(record.balance_payable_amount ?? 0);
 
     // Use balance_payable_amount from API + unpaid EB for remaining
-    // This ensures we show the correct remaining balance from the backend
-    const remaining = rentRemainingFromApi + unpaidEBAmount;
+    // Use API eb_amount if available (correctly filtered by payment month), otherwise use frontend calculation
+    const unpaidEBForRemaining = ebAmountFromApi !== undefined ? ebAmountFromApi : unpaidEBAmount;
+    const remaining = rentRemainingFromApi + unpaidEBForRemaining;
 
     // Calculate total paid amount: Total Amount - Remaining Amount
     // This is the correct and simplest way to calculate paid amount
@@ -195,7 +202,8 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, onCreate
 
     // Status: use API status if available, otherwise calculate based on remaining
     // If balance_payable_amount is 0 and no unpaid EB, status is paid
-    const calculatedStatus = (rentRemainingFromApi === 0 && unpaidEBAmount === 0) || record.status === "paid" ? "paid" : "due";
+    const unpaidEBForStatus = ebAmountFromApi !== undefined ? ebAmountFromApi : unpaidEBAmount;
+    const calculatedStatus = (rentRemainingFromApi === 0 && unpaidEBForStatus === 0) || record.status === "paid" ? "paid" : "due";
 
     return { rent, eb: ebDisplay, ebTotal, total, paid: totalPaid, remaining, calculatedStatus, rentPaid, paidEBAmount };
   };
@@ -233,14 +241,16 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, onCreate
       title: "EB Bill",
       key: "eb",
       render: (_, record) => {
-        const unpaidEBAmount = getUnpaidElectricityAmount(record.user_id);
-        const totalEBAmount = getTotalElectricityAmount(record.user_id);
-        const allEBPaid = isAllEBPaid(record.user_id);
-
-        // Show unpaid EB amount, or total EB if no unpaid (all paid)
-        const ebAmount = unpaidEBAmount > 0 ? unpaidEBAmount : totalEBAmount > 0 ? totalEBAmount : 0;
+        // Use the value from getChargeBreakdown which prioritizes API eb_amount
+        const { eb: ebDisplay } = getChargeBreakdown(record);
+        const ebAmount = ebDisplay;
         const hasEBAmount = ebAmount > 0;
-        const isPaid = allEBPaid && totalEBAmount > 0;
+
+        // Check if EB is paid for this payment month
+        // If API returns 0, it means no unpaid bill for this month (either paid or doesn't exist)
+        const ebAmountFromApi = record.eb_amount !== undefined ? Number(record.eb_amount || 0) : undefined;
+        const totalEBAmount = getTotalElectricityAmount(record.user_id);
+        const isPaid = ebAmountFromApi !== undefined && ebAmountFromApi === 0 && totalEBAmount > 0;
 
         return (
           <span

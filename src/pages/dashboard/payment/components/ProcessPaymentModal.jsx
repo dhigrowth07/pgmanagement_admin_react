@@ -9,14 +9,21 @@ const ProcessPaymentModal = ({ visible, onCancel, onSubmit, loading, payment }) 
 
   useEffect(() => {
     if (visible && payment) {
+      // Reset payment type to "full" every time modal opens
       setPaymentType("full");
       // Use balance_payable_amount (actual remaining balance) or stored_amount_due (actual stored value)
       // amount_due is calculated from current tariff and may not reflect actual remaining balance
       const actualAmountDue = Number(payment.balance_payable_amount ?? payment.stored_amount_due ?? payment.amount_due ?? 0);
       form.setFieldsValue({
+        paymentType: "full",
         payment_method: "online",
         amount_paid: actualAmountDue > 0 ? actualAmountDue : payment.amount_due,
+        transaction_reference: undefined,
       });
+    } else if (!visible) {
+      // Reset form and state when modal closes
+      form.resetFields();
+      setPaymentType("full");
     }
   }, [payment, visible, form]);
 
@@ -62,7 +69,7 @@ const ProcessPaymentModal = ({ visible, onCancel, onSubmit, loading, payment }) 
       <Alert message={`Amount Due: ₹${actualAmountDue.toLocaleString()}`} type="info" style={{ marginBottom: 16 }} />
       <Form form={form} layout="vertical" onFinish={handleFinish}>
         <Form.Item label="Payment Type" name="paymentType">
-          <Radio.Group defaultValue={"full"} onChange={handleTypeChange} value={paymentType}>
+          <Radio.Group onChange={handleTypeChange} value={paymentType}>
             <Radio value="full">Full Payment</Radio>
             <Radio value="initial">Partial / Custom Payment (Adjust Due)</Radio>
           </Radio.Group>
@@ -87,7 +94,7 @@ const ProcessPaymentModal = ({ visible, onCancel, onSubmit, loading, payment }) 
               rules={[
                 { required: true, message: "Amount paid is required" },
                 { type: "number", min: 0.01, message: "Amount must be greater than 0" },
-                ({ getFieldValue }) => ({
+                () => ({
                   validator(_, value) {
                     if (!value || value <= actualAmountDue) {
                       return Promise.resolve();
