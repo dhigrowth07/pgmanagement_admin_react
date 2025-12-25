@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "start": "node server.js",
     "generate-template": "node scripts/generate-bulk-import-template.js"
   },
   "bin": {
@@ -21,6 +22,7 @@
     "antd": "^5.25.3",
     "axios": "^1.9.0",
     "class-variance-authority": "^0.7.1",
+    "express": "^4.18.2",
     "date-fns": "^4.1.0",
     "dotenv": "^16.5.0",
     "framer-motion": "^12.19.2",
