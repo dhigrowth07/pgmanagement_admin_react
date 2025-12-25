@@ -13,6 +13,7 @@ import DeletionRequestsPage from "../../pages/dashboard/deletionRequests/Deletio
 import ExpenseManagementPage from "../../pages/dashboard/expense/ExpenseManagementPage";
 import AdminManagementPage from "../../pages/dashboard/admin/AdminManagementPage";
 import ActivityLogsPage from "../../pages/dashboard/activityLogs/ActivityLogsPage";
+import QRCodePage from "../../pages/dashboard/setting/QRCodePage";
 const { Content: AntContent } = Layout;
 
 const Content = ({ selectedMenu, onMenuChange }) => {
@@ -56,6 +57,9 @@ const Content = ({ selectedMenu, onMenuChange }) => {
       break;
     case "activity-logs":
       content = <ActivityLogsPage />;
+      break;
+    case "qr-codes":
+      content = <QRCodePage />;
       break;
     default:
       content = <DashboardContents onMenuChange={onMenuChange} />;

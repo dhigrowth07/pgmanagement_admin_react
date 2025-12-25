@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Button, Layout, Menu, Badge, Spin } from "antd";
+import { QrcodeOutlined } from "@ant-design/icons";
 import { MdDashboard, MdCategory, MdLogout, MdOutlineInventory2, MdOutlineLocalShipping, MdAlternateEmail } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -94,25 +95,30 @@ const BASE_MENU_ITEMS = [
     permission: null, // Visibility controlled by isMainAdmin check
     requiresMainAdmin: true,
   },
-  {
-    key: "settings",
-    icon: <FiSettings size={18} />,
-    label: "Settings",
-    type: "group",
-    permission: null, // Always visible
-    children: [
-      // {
-      //   key: "edit-profile",
-      //   icon: <Pencil size={18} />,
-      //   label: "Edit Profile",
-      // },
       {
-        key: "activity-logs",
-        icon: <FileText size={18} />,
-        label: "Activity Logs",
+        key: "settings",
+        icon: <FiSettings size={18} />,
+        label: "Settings",
+        type: "group",
+        permission: null, // Always visible
+        children: [
+          // {
+          //   key: "edit-profile",
+          //   icon: <Pencil size={18} />,
+          //   label: "Edit Profile",
+          // },
+          {
+            key: "activity-logs",
+            icon: <FileText size={18} />,
+            label: "Activity Logs",
+          },
+          {
+            key: "qr-codes",
+            icon: <QrcodeOutlined style={{ fontSize: 18 }} />,
+            label: "QR Codes",
+          },
+        ],
       },
-    ],
-  },
 ];
 
 const DEFAULT_SIDEBAR_WIDTH = 250;

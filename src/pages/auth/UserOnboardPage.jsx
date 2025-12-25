@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Form, Input, Button, DatePicker, Select, Upload, Alert, Typography, Row, Col } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
+import { useSearchParams } from "react-router-dom";
 import api from "../../services/api";
 import toast from "react-hot-toast";
 
@@ -10,6 +11,7 @@ const { Option } = Select;
 
 const UserOnboardPage = () => {
   const [form] = Form.useForm();
+  const [searchParams] = useSearchParams();
   const [submitting, setSubmitting] = useState(false);
   /** @type {[string | null, Function]} */
   const [error, setError] = useState(null);
@@ -19,8 +21,18 @@ const UserOnboardPage = () => {
   const [availableRooms, setAvailableRooms] = useState([]);
 
   useEffect(() => {
-    // Ensure tenant_id is set for room fetching as well
-    localStorage.setItem("tenant_id", "6a4dc5af-ee9a-4128-a78f-dcb4b0c32330");
+    // Read tenant_id and admin_id from URL query parameters
+    const tenantIdFromUrl = searchParams.get("tenant_id");
+    const adminIdFromUrl = searchParams.get("admin_id");
+
+    // Use tenant_id from URL if available, otherwise fallback to hardcoded value (for backward compatibility)
+    const tenantId = tenantIdFromUrl || "6a4dc5af-ee9a-4128-a78f-dcb4b0c32330";
+    localStorage.setItem("tenant_id", tenantId);
+
+    // Store admin_id if provided in URL
+    if (adminIdFromUrl) {
+      localStorage.setItem("admin_id", adminIdFromUrl);
+    }
 
     const fetchRooms = async () => {
       try {
@@ -40,8 +52,16 @@ const UserOnboardPage = () => {
   const handleFinish = async (values) => {
     setError(null);
 
-    // Hardcoded tenant_id for public onboarding (required by backend)
-    localStorage.setItem("tenant_id", "6a4dc5af-ee9a-4128-a78f-dcb4b0c32330");
+    // Ensure tenant_id is set (from URL params or fallback)
+    const tenantIdFromUrl = searchParams.get("tenant_id");
+    const tenantId = tenantIdFromUrl || "6a4dc5af-ee9a-4128-a78f-dcb4b0c32330";
+    localStorage.setItem("tenant_id", tenantId);
+
+    // Ensure admin_id is set if provided in URL
+    const adminIdFromUrl = searchParams.get("admin_id");
+    if (adminIdFromUrl) {
+      localStorage.setItem("admin_id", adminIdFromUrl);
+    }
 
     const formData = new FormData();
 
@@ -90,6 +110,7 @@ const UserOnboardPage = () => {
       }
     });
 
+    // Validate that at least one ID proof is uploaded
     if (idProofFileList.length === 0) {
       setError("Please upload at least one ID proof document.");
       return;
@@ -159,12 +180,12 @@ const UserOnboardPage = () => {
             rules={[
               { required: true, message: "Please create a password" },
               {
-                min: 8,
-                message: "Password must be at least 8 characters",
+                min: 6,
+                message: "Password must be at least 6 characters",
               },
             ]}
           >
-            <Input.Password placeholder="Minimum 8 characters" />
+            <Input.Password placeholder="Minimum 6 characters" />
           </Form.Item>
 
           <Form.Item name="phone" label="Phone Number" rules={[{ required: true, message: "Please enter your phone number" }]}>
@@ -225,8 +246,8 @@ const UserOnboardPage = () => {
           <Form.Item
             label="ID Proof Documents"
             required
-            validateStatus={idProofFileList.length === 0 && error ? "error" : undefined}
-            help={idProofFileList.length === 0 && error ? "Please upload at least one ID proof" : null}
+            validateStatus={idProofFileList.length === 0 ? "error" : undefined}
+            help={idProofFileList.length === 0 ? "Please upload at least one ID proof document" : "At least one ID proof document is required"}
           >
             <Upload
               multiple
