@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from "react";
-import { Button, Layout, Menu, Badge } from "antd";
+import React, { useState, useMemo, useEffect } from "react";
+import { Button, Layout, Menu, Badge, Spin } from "antd";
 import { MdDashboard, MdCategory, MdLogout, MdOutlineInventory2, MdOutlineLocalShipping, MdAlternateEmail } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -10,8 +10,9 @@ const { SubMenu } = Menu;
 import { BarChart3, Users, AlertTriangle, Building, Utensils, User, CreditCard, Settings, BuildingIcon, ShieldAlert, Pencil, UserX, Receipt, UserCog, FileText } from "lucide-react";
 import { FiSettings } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
-import { logout, selectUser, selectIsMainAdmin } from "../../redux/auth/authSlice";
+import { logout, selectUser, selectIsMainAdmin, selectAuthStatus } from "../../redux/auth/authSlice";
 import { selectAllIssues, selectIssueStatus } from "../../redux/issue/issueSlice";
+import { fetchAllAdmins, selectAllAdmins, selectAdminStatus } from "../../redux/admin/adminSlice";
 
 // Base menu items with their feature permission mappings
 const BASE_MENU_ITEMS = [
@@ -125,8 +126,16 @@ export default function Sidebar({ onSelectMenu, selectedKey }) {
   const dispatch = useDispatch();
   const user = useSelector(selectUser);
   const isMainAdmin = useSelector(selectIsMainAdmin);
+  const authStatus = useSelector(selectAuthStatus);
   const issues = useSelector(selectAllIssues);
   const issueStatus = useSelector(selectIssueStatus);
+  const admins = useSelector(selectAllAdmins);
+  const adminStatus = useSelector(selectAdminStatus);
+
+  // Check if we're still determining main admin status
+  // If authStatus is "loading" and isMainAdmin is false, we might be checking
+  const isCheckingMainAdmin = authStatus === "loading" && isMainAdmin === false && user !== null;
+
   const unresolvedIssuesCount = useMemo(() => {
     if (!issues || issues.length === 0) return 0;
     return issues.reduce((count, issue) => {
@@ -138,23 +147,114 @@ export default function Sidebar({ onSelectMenu, selectedKey }) {
     }, 0);
   }, [issues]);
 
+  // Fetch admins if user is main admin (only fetch once when conditions are met)
+  useEffect(() => {
+    if (isMainAdmin && user?.tenant_id && (adminStatus === "idle" || adminStatus === "failed")) {
+      dispatch(fetchAllAdmins(user.tenant_id));
+    }
+  }, [dispatch, isMainAdmin, user?.tenant_id, adminStatus]);
+
+  // Check if main admin has other admins (excluding current user)
+  // Only check after admins have been fetched (status is "succeeded")
+  const hasOtherAdmins = useMemo(() => {
+    if (!isMainAdmin) return false;
+    // Wait for admin fetch to complete before determining
+    if (adminStatus !== "succeeded" || !admins || admins.length === 0) return false;
+    // Filter out the current user from the admins list
+    const otherAdmins = admins.filter((admin) => admin.admin_id !== user?.admin_id);
+    return otherAdmins.length > 0;
+  }, [isMainAdmin, admins, user?.admin_id, adminStatus]);
+
+  // Determine if we should show loading state in sidebar
+  // Show loading if:
+  // 1. We're checking main admin status, OR
+  // 2. We're a main admin and fetching admins list (but only if we haven't confirmed no other admins yet)
+  const isSidebarLoading = useMemo(() => {
+    return isCheckingMainAdmin || (isMainAdmin && (adminStatus === "loading" || (adminStatus === "idle" && !hasOtherAdmins)));
+  }, [isCheckingMainAdmin, isMainAdmin, adminStatus, hasOtherAdmins]);
+
+  // Determine the default/effective selected key
+  const effectiveSelectedKey = useMemo(() => {
+    // Only auto-select admin-management if main admin has other admins
+    if (isMainAdmin && hasOtherAdmins) {
+      // If current selection is dashboard, switch to admin-management
+      if (selectedKey === "dashboard") {
+        return "admin-management";
+      }
+      // If no selection, default to admin-management
+      if (!selectedKey) {
+        return "admin-management";
+      }
+      return selectedKey;
+    }
+    // For main admin without other admins, or non-main admins, default to dashboard
+    // Also if we're still loading and haven't confirmed other admins, default to dashboard
+    if (isMainAdmin && !hasOtherAdmins && adminStatus === "succeeded" && selectedKey === "admin-management") {
+      return "dashboard";
+    }
+    return selectedKey || "dashboard";
+  }, [isMainAdmin, hasOtherAdmins, selectedKey, adminStatus]);
+
+  // Auto-select admin-management when main admin has other admins
+  // Auto-select dashboard when main admin doesn't have other admins
+  useEffect(() => {
+    if (isMainAdmin && adminStatus === "succeeded") {
+      if (hasOtherAdmins && selectedKey !== "admin-management") {
+        onSelectMenu("admin-management");
+      } else if (!hasOtherAdmins && selectedKey === "admin-management") {
+        onSelectMenu("dashboard");
+      }
+    }
+  }, [isMainAdmin, hasOtherAdmins, selectedKey, onSelectMenu, adminStatus]);
+
   // Filter menu items based on feature permissions and main admin status
   const filteredMenuItems = useMemo(() => {
     const featurePermissions = user?.feature_permissions || {};
 
+    // If main admin, show menu based on whether they have other admins
+    if (isMainAdmin || isCheckingMainAdmin) {
+      // Show only "Admin Management" ONLY if we have confirmed other admins exist
+      if (hasOtherAdmins && adminStatus === "succeeded") {
+        return BASE_MENU_ITEMS.filter((item) => item.key === "admin-management");
+      }
+
+      // For all other cases (loading, idle, no other admins, etc.), show full menu WITHOUT Admin Management
+      return BASE_MENU_ITEMS.filter((item) => {
+        // Hide "Admin Management" unless we've confirmed other admins exist
+        if (item.key === "admin-management") {
+          return false;
+        }
+        // Check main admin requirement
+        if (item.requiresMainAdmin && !isMainAdmin) {
+          return false;
+        }
+        // If no permission required, always show
+        if (!item.permission) {
+          return true;
+        }
+        // Check if the feature is enabled
+        return featurePermissions[item.permission] === true;
+      });
+    }
+
+    // For non-main admins, show full menu based on permissions
     return BASE_MENU_ITEMS.filter((item) => {
+      // Hide "Admin Management" for non-main admins
+      if (item.key === "admin-management") {
+        return false;
+      }
       // Check main admin requirement
       if (item.requiresMainAdmin && !isMainAdmin) {
         return false;
       }
-      // If no permission required, always show (unless main admin check fails)
+      // If no permission required, always show
       if (!item.permission) {
         return true;
       }
       // Check if the feature is enabled
       return featurePermissions[item.permission] === true;
     });
-  }, [user?.feature_permissions, isMainAdmin]);
+  }, [user?.feature_permissions, isMainAdmin, hasOtherAdmins, adminStatus, isCheckingMainAdmin]);
 
   const navigate = useNavigate();
 
@@ -232,21 +332,35 @@ export default function Sidebar({ onSelectMenu, selectedKey }) {
         )}
       </div>
 
-      <Menu
-        mode="inline"
-        defaultSelectedKeys={["dashboard"]}
-        selectedKeys={[selectedKey]}
-        openKeys={openKeys}
-        onOpenChange={handleOpenChange}
-        onSelect={handleMenuSelect}
-        style={{
-          borderRight: 0,
-          height: collapsed ? "calc(100vh - 150px)" : "calc(100vh - 150px)",
-        }}
-        className="flex-grow overflow-y-auto scrollbar"
-      >
-        {filteredMenuItems.map(renderMenuItem)}
-      </Menu>
+      {isSidebarLoading ? (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "calc(100vh - 150px)",
+            padding: "20px",
+          }}
+        >
+          <Spin size="large" tip="Loading menu..." />
+        </div>
+      ) : (
+        <Menu
+          mode="inline"
+          defaultSelectedKeys={[effectiveSelectedKey]}
+          selectedKeys={[effectiveSelectedKey]}
+          openKeys={openKeys}
+          onOpenChange={handleOpenChange}
+          onSelect={handleMenuSelect}
+          style={{
+            borderRight: 0,
+            height: collapsed ? "calc(100vh - 150px)" : "calc(100vh - 150px)",
+          }}
+          className="flex-grow overflow-y-auto scrollbar"
+        >
+          {filteredMenuItems.map(renderMenuItem)}
+        </Menu>
+      )}
 
       <div className="flex justify-center items-center w-full">
         <Button onClick={handleLogout} style={{ backgroundColor: "#19314B", borderColor: "#19314B" }} type="primary" icon={<MdLogout size={15} />} className="w-full">
