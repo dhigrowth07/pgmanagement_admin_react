@@ -82,7 +82,14 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, onCreate
         {hasUnpaidEB && (
           <>
             <Menu.Divider />
-            <Menu.Item key="markEBPaid" icon={<DollarOutlined />} onClick={() => handleMarkEBAsPaid(record)} disabled={isMarkingPaid} danger className='text-red-500 border border-red-500 hover:text-white hover:bg-red-500'>
+            <Menu.Item
+              key="markEBPaid"
+              icon={<DollarOutlined />}
+              onClick={() => handleMarkEBAsPaid(record)}
+              disabled={isMarkingPaid}
+              danger
+              className="text-red-500 border border-red-500 hover:text-white hover:bg-red-500"
+            >
               {isMarkingPaid ? "Marking as Paid..." : `Mark as Paid EB (${unpaidBills.length})`}
             </Menu.Item>
           </>
@@ -157,18 +164,21 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, onCreate
     const paidEBAmount = getPaidElectricityAmount(record.user_id);
     const totalEBAmount = getTotalElectricityAmount(record.user_id);
 
-    // Use eb_amount from API - backend correctly matches bills by payment month
+    // Use eb_amount from API - this is the TOTAL EB amount for the payment month (like Rent)
     // Backend query: eb.month = TO_CHAR(payment_cycle_start_date, 'YYYY-MM')
-    // This ensures each payment shows the correct EB bill for its specific month
-    const ebAmountFromApi = record.eb_amount !== undefined ? Number(record.eb_amount || 0) : undefined;
+    // This shows the original amount regardless of payment status
+    const ebTotalAmountFromApi = record.eb_amount !== undefined ? Number(record.eb_amount || 0) : undefined;
 
+    // Use eb_unpaid_amount from API - this is the UNPAID EB amount for the payment month
+    const ebUnpaidAmountFromApi = record.eb_unpaid_amount !== undefined ? Number(record.eb_unpaid_amount || 0) : undefined;
+
+    // For display: show TOTAL EB amount (like Rent shows total, not just unpaid)
     // Prioritize API value (correctly filtered by payment month)
     // Fallback to frontend calculation only if API value not available
-    const ebDisplay = ebAmountFromApi !== undefined ? ebAmountFromApi : unpaidEBAmount > 0 ? unpaidEBAmount : totalEBAmount > 0 ? totalEBAmount : 0;
+    const ebDisplay = ebTotalAmountFromApi !== undefined ? ebTotalAmountFromApi : totalEBAmount > 0 ? totalEBAmount : 0;
 
-    // For total calculation: use API value (unpaid amount for this payment month)
-    // If API returns 0, check if there's a paid bill to show in total
-    const ebTotal = ebAmountFromApi !== undefined ? ebAmountFromApi : totalEBAmount > 0 ? totalEBAmount : 0;
+    // For total calculation: use TOTAL EB amount (not unpaid)
+    const ebTotal = ebDisplay;
 
     // Get variable_fee from payment record (sent by backend) or tariff lookup (fallback)
     // This represents the base electricity/utility charge
@@ -184,8 +194,8 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, onCreate
     const rentRemainingFromApi = Number(record.balance_payable_amount ?? 0);
 
     // Use balance_payable_amount from API + unpaid EB for remaining
-    // Use API eb_amount if available (correctly filtered by payment month), otherwise use frontend calculation
-    const unpaidEBForRemaining = ebAmountFromApi !== undefined ? ebAmountFromApi : unpaidEBAmount;
+    // Use API eb_unpaid_amount if available (correctly filtered by payment month), otherwise use frontend calculation
+    const unpaidEBForRemaining = ebUnpaidAmountFromApi !== undefined ? ebUnpaidAmountFromApi : unpaidEBAmount;
     const remaining = rentRemainingFromApi + unpaidEBForRemaining;
 
     // Calculate total paid amount: Total Amount - Remaining Amount
@@ -202,7 +212,7 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, onCreate
 
     // Status: Only show "paid" if BOTH rent and EB bill are fully paid
     // Check both conditions: rent remaining must be 0 AND EB bill must be fully paid
-    const unpaidEBForStatus = ebAmountFromApi !== undefined ? ebAmountFromApi : unpaidEBAmount;
+    const unpaidEBForStatus = ebUnpaidAmountFromApi !== undefined ? ebUnpaidAmountFromApi : unpaidEBAmount;
     // Status is "paid" only when both rent (balance_payable_amount) and EB are fully paid
     const calculatedStatus = rentRemainingFromApi === 0 && unpaidEBForStatus === 0 ? "paid" : "due";
 
@@ -242,23 +252,20 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, onCreate
       title: "EB Bill",
       key: "eb",
       render: (_, record) => {
-        // Use the value from getChargeBreakdown which prioritizes API eb_amount
+        // Use the value from getChargeBreakdown which shows TOTAL EB amount (like Rent)
         const { eb: ebDisplay } = getChargeBreakdown(record);
         const ebAmount = ebDisplay;
         const hasEBAmount = ebAmount > 0;
 
-        // Check if EB is paid for this payment month
-        // If API returns 0, it means no unpaid bill for this month (either paid or doesn't exist)
-        const ebAmountFromApi = record.eb_amount !== undefined ? Number(record.eb_amount || 0) : undefined;
-        const totalEBAmount = getTotalElectricityAmount(record.user_id);
-        const isPaid = ebAmountFromApi !== undefined && ebAmountFromApi === 0 && totalEBAmount > 0;
+        // Check if EB is paid for this payment month using API field
+        const ebIsPaid = record.eb_is_paid === true || record.eb_is_paid === "true";
 
         return (
           <span
             style={{
               fontWeight: hasEBAmount ? "bold" : "normal",
-              color: isPaid ? "#52c41a" : hasEBAmount ? "#ff4d4f" : "inherit",
-              backgroundColor: isPaid ? "#f6ffed" : hasEBAmount ? "#fff1f0" : "transparent",
+              color: ebIsPaid && hasEBAmount ? "#52c41a" : hasEBAmount ? "#ff4d4f" : "inherit",
+              backgroundColor: ebIsPaid && hasEBAmount ? "#f6ffed" : hasEBAmount ? "#fff1f0" : "transparent",
               padding: hasEBAmount ? "2px 6px" : "0",
               borderRadius: hasEBAmount ? "4px" : "0",
             }}

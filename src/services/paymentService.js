@@ -6,6 +6,10 @@ export const getAllPayments = (params) => {
     return api.get(BASE_URL, { params });
 };
 
+export const getAllPaymentsWithTotalEB = (params) => {
+    return api.get(`${BASE_URL}/combined`, { params });
+};
+
 export const getPaymentById = (id) => {
     return api.get(`${BASE_URL}/${id}`);
 };

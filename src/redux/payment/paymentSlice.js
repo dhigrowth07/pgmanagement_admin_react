@@ -13,7 +13,8 @@ const initialState = {
 
 export const fetchPayments = createAsyncThunk("payment/fetchPayments", async (params, { rejectWithValue }) => {
   try {
-    const response = await paymentService.getAllPayments(params);
+    // Use the combined endpoint that shows total EB amount (like Rent)
+    const response = await paymentService.getAllPaymentsWithTotalEB(params);
     // Ensure we return an array even if the API returns undefined
     return response.data.data || [];
   } catch (error) {
