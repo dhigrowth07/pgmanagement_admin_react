@@ -34,6 +34,20 @@ const ProcessPaymentModal = ({ visible, onCancel, onSubmit, loading, payment }) 
   const actualAmountDue = Number(payment.balance_payable_amount ?? payment.stored_amount_due ?? payment.amount_due ?? 0);
 
   const handleFinish = (values) => {
+    // Additional validation: Ensure amount_paid doesn't exceed actualAmountDue for initial payments
+    if (paymentType === "initial" && values.amount_paid) {
+      const amountPaid = Number(values.amount_paid);
+      if (amountPaid > actualAmountDue) {
+        form.setFields([
+          {
+            name: "amount_paid",
+            errors: [`Amount cannot exceed ₹${actualAmountDue.toLocaleString()}`],
+          },
+        ]);
+        return;
+      }
+    }
+
     // Normalize payment method to lowercase to match database constraint
     const normalizedValues = {
       ...values,
@@ -96,15 +110,53 @@ const ProcessPaymentModal = ({ visible, onCancel, onSubmit, loading, payment }) 
                 { type: "number", min: 0.01, message: "Amount must be greater than 0" },
                 () => ({
                   validator(_, value) {
-                    if (!value || value <= actualAmountDue) {
+                    if (!value) {
                       return Promise.resolve();
                     }
-                    return Promise.reject(new Error(`Amount cannot exceed ₹${actualAmountDue.toLocaleString()}`));
+                    const numValue = Number(value);
+                    if (isNaN(numValue) || numValue <= 0) {
+                      return Promise.reject(new Error("Amount must be greater than 0"));
+                    }
+                    if (numValue > actualAmountDue) {
+                      return Promise.reject(new Error(`Amount cannot exceed ₹${actualAmountDue.toLocaleString()}`));
+                    }
+                    return Promise.resolve();
                   },
                 }),
               ]}
             >
-              <InputNumber style={{ width: "100%" }} addonBefore="₹" placeholder="Enter amount paid" min={0.01} max={actualAmountDue} />
+              <InputNumber
+                style={{ width: "100%" }}
+                addonBefore="₹"
+                placeholder="Enter amount paid"
+                min={0.01}
+                precision={2}
+                onChange={(value) => {
+                  // Trigger validation immediately when value changes to show error if exceeds limit
+                  if (value !== null && value !== undefined) {
+                    const numValue = Number(value);
+                    // Validate immediately if value exceeds amount due
+                    if (!isNaN(numValue) && numValue > actualAmountDue) {
+                      // Use setTimeout to ensure the value is set first, then validate
+                      setTimeout(() => {
+                        form.validateFields(["amount_paid"]);
+                      }, 0);
+                    } else {
+                      // Clear errors if value is valid
+                      form.setFields([
+                        {
+                          name: "amount_paid",
+                          errors: [],
+                        },
+                      ]);
+                    }
+                  }
+                }}
+                onBlur={() => {
+                  // Also validate on blur to ensure error shows when user leaves the field
+                  form.validateFields(["amount_paid"]);
+                }}
+              />
             </Form.Item>
 
             <Form.Item name="transaction_reference" label="Transaction Reference" rules={[{ required: true, message: "Transaction reference is required for initial payment" }]}>

@@ -69,11 +69,11 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, onCreate
         <Menu.Item key="view" icon={<EyeOutlined />} onClick={() => onView(record)}>
           View Details
         </Menu.Item>
-        {onCreateManual && (
+        {/* {onCreateManual && (
           <Menu.Item key="manualPayment" icon={<DollarOutlined />} onClick={() => onCreateManual(record)}>
             Add Manual Payment
           </Menu.Item>
-        )}
+        )} */}
         {calculatedStatus === "due" && (
           <Menu.Item key="process" icon={<CheckCircleOutlined />} onClick={() => onProcess(record)}>
             Process Payment
@@ -82,7 +82,7 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, onCreate
         {hasUnpaidEB && (
           <>
             <Menu.Divider />
-            <Menu.Item key="markEBPaid" icon={<DollarOutlined />} onClick={() => handleMarkEBAsPaid(record)} disabled={isMarkingPaid}>
+            <Menu.Item key="markEBPaid" icon={<DollarOutlined />} onClick={() => handleMarkEBAsPaid(record)} disabled={isMarkingPaid} danger className='text-red-500 border border-red-500 hover:text-white hover:bg-red-500'>
               {isMarkingPaid ? "Marking as Paid..." : `Mark as Paid EB (${unpaidBills.length})`}
             </Menu.Item>
           </>
@@ -200,10 +200,11 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, onCreate
     const totalRentAndVariablePaid = totalBaseAmount - rentRemainingFromApi;
     const rentPaid = totalBaseAmount > 0 ? (rent / totalBaseAmount) * totalRentAndVariablePaid : 0;
 
-    // Status: use API status if available, otherwise calculate based on remaining
-    // If balance_payable_amount is 0 and no unpaid EB, status is paid
+    // Status: Only show "paid" if BOTH rent and EB bill are fully paid
+    // Check both conditions: rent remaining must be 0 AND EB bill must be fully paid
     const unpaidEBForStatus = ebAmountFromApi !== undefined ? ebAmountFromApi : unpaidEBAmount;
-    const calculatedStatus = (rentRemainingFromApi === 0 && unpaidEBForStatus === 0) || record.status === "paid" ? "paid" : "due";
+    // Status is "paid" only when both rent (balance_payable_amount) and EB are fully paid
+    const calculatedStatus = rentRemainingFromApi === 0 && unpaidEBForStatus === 0 ? "paid" : "due";
 
     return { rent, eb: ebDisplay, ebTotal, total, paid: totalPaid, remaining, calculatedStatus, rentPaid, paidEBAmount };
   };
