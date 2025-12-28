@@ -37,7 +37,10 @@ const UserOnboardPage = () => {
     const fetchRooms = async () => {
       try {
         // Public rooms endpoint (no auth required, only tenant_id header)
-        const res = await api.get("/api/v1/rooms/public");
+        // Pass admin_id as query parameter if available to filter rooms by admin
+        const adminIdFromUrl = searchParams.get("admin_id");
+        const queryParams = adminIdFromUrl ? { admin_id: adminIdFromUrl } : {};
+        const res = await api.get("/api/v1/rooms/public", { params: queryParams });
         const allRooms = res.data?.data || [];
         const vacantRooms = allRooms.filter((room) => room.current_occupancy < room.capacity);
         setAvailableRooms(vacantRooms);
@@ -47,7 +50,7 @@ const UserOnboardPage = () => {
     };
 
     fetchRooms();
-  }, []);
+  }, [searchParams]);
 
   const handleFinish = async (values) => {
     setError(null);
