@@ -8,6 +8,7 @@ import { API_URL } from "../../config/envConfig";
 
 const initialState = {
   customers: [],
+  pendingUsers: [],
   status: "idle",
   error: null,
   bulkImportResult: null,
@@ -16,6 +17,16 @@ const initialState = {
 export const fetchAllCustomers = createAsyncThunk("customer/fetchAll", async (_, { rejectWithValue }) => {
   try {
     const response = await customerService.getAllCustomers();
+    // Ensure we return an array even if the API returns undefined
+    return response.data.data || [];
+  } catch (error) {
+    return rejectWithValue(handleApiError(error));
+  }
+});
+
+export const fetchPendingUsers = createAsyncThunk("customer/fetchPending", async (_, { rejectWithValue }) => {
+  try {
+    const response = await customerService.getPendingUsers();
     // Ensure we return an array even if the API returns undefined
     return response.data.data || [];
   } catch (error) {
@@ -249,6 +260,19 @@ export const activateCustomer = createAsyncThunk("customer/activate", async (use
   }
 });
 
+export const rejectCustomer = createAsyncThunk("customer/reject", async (userId, { dispatch, rejectWithValue }) => {
+  try {
+    const response = await customerService.rejectUser(userId);
+    toast.success(response.data.msg || "User registration rejected successfully!");
+    dispatch(fetchAllCustomers());
+    return response.data.data;
+  } catch (error) {
+    const errorData = handleApiError(error);
+    toast.error(errorData.msg || "Failed to reject user.");
+    return rejectWithValue(errorData);
+  }
+});
+
 const customerSlice = createSlice({
   name: "customer",
   initialState,
@@ -270,6 +294,18 @@ const customerSlice = createSlice({
       .addCase(fetchAllCustomers.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload.msg;
+      })
+      .addCase(fetchPendingUsers.pending, (state) => {
+        state.status = "loading";
+      })
+      .addCase(fetchPendingUsers.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.pendingUsers = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchPendingUsers.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload?.msg;
       })
       .addCase(bulkImportCustomers.pending, (state) => {
         state.status = "loading_action";
@@ -322,6 +358,7 @@ const customerSlice = createSlice({
 
 export const { clearBulkImportResult } = customerSlice.actions;
 export const selectAllCustomers = (state) => state.customer.customers;
+export const selectPendingUsers = (state) => state.customer.pendingUsers;
 export const selectCustomerStatus = (state) => state.customer.status;
 export const selectCustomerError = (state) => state.customer.error;
 export const selectBulkImportResult = (state) => state.customer.bulkImportResult;

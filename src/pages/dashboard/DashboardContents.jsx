@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Loader2, AlertCircle, Home, ShieldAlert, IndianRupee, UserPlus, Plus, FileText, Calendar, LogOut } from "lucide-react";
+import { Loader2, AlertCircle, Home, ShieldAlert, IndianRupee, UserPlus, Plus, FileText, Calendar, LogOut, Clock } from "lucide-react";
 import { Users } from "lucide-react";
 
-import { fetchAllCustomers, selectAllCustomers, selectCustomerStatus } from "../../redux/customer/customerSlice";
+import { fetchAllCustomers, fetchPendingUsers, selectAllCustomers, selectPendingUsers, selectCustomerStatus } from "../../redux/customer/customerSlice";
 import { fetchRoomsData, selectAllRooms, selectRoomStatus } from "../../redux/room/roomSlice";
 import { fetchAllIssues, selectAllIssues, selectIssueStatus } from "../../redux/issue/issueSlice";
 import { fetchStatistics, selectPaymentStatistics, selectPaymentStatus } from "../../redux/payment/paymentSlice";
@@ -33,6 +33,7 @@ const DashboardContents = ({ onMenuChange }) => {
   const dispatch = useDispatch();
 
   const customers = useSelector(selectAllCustomers);
+  const pendingUsers = useSelector(selectPendingUsers);
   const rooms = useSelector(selectAllRooms);
   const issues = useSelector(selectAllIssues);
   const paymentStats = useSelector(selectPaymentStatistics);
@@ -57,6 +58,7 @@ const DashboardContents = ({ onMenuChange }) => {
 
     // Keep existing fetches for backward compatibility
     dispatch(fetchAllCustomers());
+    dispatch(fetchPendingUsers());
     dispatch(fetchRoomsData());
     dispatch(fetchAllIssues());
     if (isPaymentEnabled) {
@@ -247,6 +249,70 @@ const DashboardContents = ({ onMenuChange }) => {
               })}
             </div>
           </div>
+
+          {/* Pending Users Section */}
+          {pendingUsers && pendingUsers.length > 0 && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-900">Pending Registration Approval ({pendingUsers.length})</h2>
+                <button onClick={() => onMenuChange("customers")} className="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                  View All →
+                </button>
+              </div>
+              <Card className="border border-gray-200 shadow-sm">
+                <CardContent className="p-6">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left py-3 px-4 font-semibold text-gray-700">Name</th>
+                          <th className="text-left py-3 px-4 font-semibold text-gray-700">Email</th>
+                          <th className="text-left py-3 px-4 font-semibold text-gray-700">Phone</th>
+                          <th className="text-left py-3 px-4 font-semibold text-gray-700">Room</th>
+                          <th className="text-left py-3 px-4 font-semibold text-gray-700">Block</th>
+                          <th className="text-left py-3 px-4 font-semibold text-gray-700">Registered On</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pendingUsers.slice(0, 10).map((user) => (
+                          <tr key={user.user_id} className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="py-3 px-4">
+                              <div className="font-medium text-gray-900">{user.name}</div>
+                            </td>
+                            <td className="py-3 px-4 text-gray-700">{user.email || "N/A"}</td>
+                            <td className="py-3 px-4 text-gray-700">{user.phone || "N/A"}</td>
+                            <td className="py-3 px-4 text-gray-700">{user.room_number || "Unassigned"}</td>
+                            <td className="py-3 px-4 text-gray-700">{user.block_name || "N/A"}</td>
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <Clock className="h-4 w-4 text-gray-400" />
+                                <span className="text-gray-700">
+                                  {user.created_at
+                                    ? new Date(user.created_at).toLocaleDateString("en-IN", {
+                                        day: "numeric",
+                                        month: "short",
+                                        year: "numeric",
+                                      })
+                                    : "N/A"}
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {pendingUsers.length > 10 && (
+                      <div className="mt-4 text-center">
+                        <button onClick={() => onMenuChange("customers")} className="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                          View all {pendingUsers.length} pending users →
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* Vacating Users Section */}
           {vacatingUsers && vacatingUsers.length > 0 && (

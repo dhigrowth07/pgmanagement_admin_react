@@ -19,6 +19,7 @@ import {
   CalendarOutlined,
   CloseCircleOutlined,
   FileTextOutlined,
+  CloseOutlined,
 } from "@ant-design/icons";
 
 const CustomerTable = ({
@@ -34,6 +35,7 @@ const CustomerTable = ({
   onAdminUpdateProfile,
   onUpdateAdvance,
   onActivate,
+  onReject,
   onReassign,
   onVacateRoom,
   onCancelVacation,
@@ -54,6 +56,10 @@ const CustomerTable = ({
     const isVacatedOrInactive = displayStatus === "Vacated" || displayStatus === "Inactive";
     // Check if user has a scheduled vacation (status is "Vacating" or vacating_on exists)
     const hasScheduledVacation = displayStatus === "Vacating" || record.vacating_on;
+    // Check registration status
+    const registrationStatus = record.registration_status || "pending";
+    const isPending = registrationStatus === "pending";
+    const isRejected = registrationStatus === "rejected";
 
     return (
       <Menu>
@@ -65,49 +71,73 @@ const CustomerTable = ({
             View Logs
           </Menu.Item>
         )}
-        {record.room_id && (
-          <Menu.Item key="changeRoom" icon={<SwapOutlined />} onClick={() => onChangeRoom(record)}>
-            Change Room
-          </Menu.Item>
-        )}
 
-        {record.room_id && (
-          <Menu.Item key="profile" icon={<UserAddOutlined />} onClick={() => onAdminUpdateProfile(record)}>
-            Update Profile
-          </Menu.Item>
-        )}
-
-        {/* Reassign option for Vacated or Inactive users */}
-        {isVacatedOrInactive && onReassign && (
-          <Menu.Item key="reassign" icon={<ReloadOutlined />} onClick={() => onReassign(record)}>
-            Reassign
-          </Menu.Item>
-        )}
-
-        {record.room_id && (
+        {/* Approve/Reject actions for pending users */}
+        {isPending && (
           <>
-            {/* <Menu.Item key="tariff" icon={<SwapOutlined />} onClick={() => onChangeTariff(record)}>
-              Change Tariff
-            </Menu.Item> */}
-            <Menu.Item key="advance" icon={<DollarCircleOutlined />} onClick={() => onUpdateAdvance(record)}>
-              Update Advance
-            </Menu.Item>
-            <Menu.Item key="password" icon={<KeyOutlined />} onClick={() => onChangePassword(record)}>
-              Change Password
-            </Menu.Item>
-            {hasScheduledVacation && onCancelVacation && (
-              <Menu.Item key="cancelVacation" icon={<CloseCircleOutlined />} onClick={() => onCancelVacation(record)}>
-                Cancel Vacation
+            <Menu.Divider />
+            {onActivate && (
+              <Menu.Item key="approve" icon={<CheckCircleOutlined />} onClick={() => onActivate(record)}>
+                Approve Registration
               </Menu.Item>
             )}
-            {!hasScheduledVacation && onVacateRoom && (
-              <Menu.Item key="vacate" icon={<CalendarOutlined />} onClick={() => onVacateRoom(record)}>
-                Vacate Room
+            {onReject && (
+              <Menu.Item key="reject" icon={<CloseOutlined />} onClick={() => onReject(record)} danger>
+                Reject Registration
               </Menu.Item>
             )}
-            <Menu.Item key="remove" icon={<LogoutOutlined />} onClick={() => onRemoveFromRoom(record)}>
-              Remove from Room
-            </Menu.Item>
+            <Menu.Divider />
+          </>
+        )}
+
+        {/* Only show room management options if user is not pending */}
+        {!isPending && (
+          <>
+            {record.room_id && (
+              <Menu.Item key="changeRoom" icon={<SwapOutlined />} onClick={() => onChangeRoom(record)}>
+                Change Room
+              </Menu.Item>
+            )}
+
+            {record.room_id && (
+              <Menu.Item key="profile" icon={<UserAddOutlined />} onClick={() => onAdminUpdateProfile(record)}>
+                Update Profile
+              </Menu.Item>
+            )}
+
+            {/* Reassign option for Vacated or Inactive users (but not rejected) */}
+            {isVacatedOrInactive && !isRejected && onReassign && (
+              <Menu.Item key="reassign" icon={<ReloadOutlined />} onClick={() => onReassign(record)}>
+                Reassign
+              </Menu.Item>
+            )}
+
+            {record.room_id && (
+              <>
+                {/* <Menu.Item key="tariff" icon={<SwapOutlined />} onClick={() => onChangeTariff(record)}>
+                  Change Tariff
+                </Menu.Item> */}
+                <Menu.Item key="advance" icon={<DollarCircleOutlined />} onClick={() => onUpdateAdvance(record)}>
+                  Update Advance
+                </Menu.Item>
+                <Menu.Item key="password" icon={<KeyOutlined />} onClick={() => onChangePassword(record)}>
+                  Change Password
+                </Menu.Item>
+                {hasScheduledVacation && onCancelVacation && (
+                  <Menu.Item key="cancelVacation" icon={<CloseCircleOutlined />} onClick={() => onCancelVacation(record)}>
+                    Cancel Vacation
+                  </Menu.Item>
+                )}
+                {!hasScheduledVacation && onVacateRoom && (
+                  <Menu.Item key="vacate" icon={<CalendarOutlined />} onClick={() => onVacateRoom(record)}>
+                    Vacate Room
+                  </Menu.Item>
+                )}
+                <Menu.Item key="remove" icon={<LogoutOutlined />} onClick={() => onRemoveFromRoom(record)}>
+                  Remove from Room
+                </Menu.Item>
+              </>
+            )}
           </>
         )}
 
@@ -230,6 +260,23 @@ const CustomerTable = ({
       },
     },
     {
+      title: "Registration Status",
+      dataIndex: "registration_status",
+      key: "registration_status",
+      render: (registrationStatus, record) => {
+        const status = registrationStatus || "pending";
+        const statusConfig = {
+          approved: { color: "green", text: "Approved" },
+          pending: { color: "orange", text: "Pending" },
+          rejected: { color: "red", text: "Rejected" },
+        };
+
+        const config = statusConfig[status] || statusConfig.pending;
+
+        return <Tag color={config.color}>{config.text}</Tag>;
+      },
+    },
+    {
       title: "Status",
       dataIndex: "status",
       key: "status",
@@ -257,11 +304,37 @@ const CustomerTable = ({
       title: "Actions",
       key: "actions",
       align: "center",
-      render: (_, record) => (
-        <Dropdown overlay={getMenuItems(record)} trigger={["click"]}>
-          <Button type="text" shape="circle" icon={<EllipsisOutlined style={{ fontSize: "20px" }} />} />
-        </Dropdown>
-      ),
+      render: (_, record) => {
+        const registrationStatus = record.registration_status || "pending";
+        const isPending = registrationStatus === "pending";
+
+        return (
+          <Space>
+            {/* Quick action buttons for pending users */}
+            {isPending && (
+              <>
+                {onActivate && (
+                  <Tooltip title="Approve Registration">
+                    <Button type="primary" size="small" icon={<CheckCircleOutlined />} onClick={() => onActivate(record)} style={{ marginRight: 4 }}>
+                      Approve
+                    </Button>
+                  </Tooltip>
+                )}
+                {onReject && (
+                  <Tooltip title="Reject Registration">
+                    <Button danger size="small" icon={<CloseOutlined />} onClick={() => onReject(record)} style={{ marginRight: 4 }}>
+                      Reject
+                    </Button>
+                  </Tooltip>
+                )}
+              </>
+            )}
+            <Dropdown overlay={getMenuItems(record)} trigger={["click"]}>
+              <Button type="text" shape="circle" icon={<EllipsisOutlined style={{ fontSize: "20px" }} />} />
+            </Dropdown>
+          </Space>
+        );
+      },
     },
   ];
 

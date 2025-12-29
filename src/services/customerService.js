@@ -78,6 +78,10 @@ export const activateUser = (userId) => {
   return api.put(`/api/v1/users/${userId}/activate`);
 };
 
+export const rejectUser = (userId) => {
+  return api.put(`/api/v1/users/${userId}/reject`);
+};
+
 export const changeRoomCustomer = (userId, roomId) => {
   return api.put(`/api/v1/users/${userId}/change-room`, { room_id: roomId });
 };
@@ -88,4 +92,8 @@ export const vacateUserRoom = (userId) => {
 
 export const cancelVacation = (userId) => {
   return api.delete(`/api/v1/users/${userId}/vacation`);
+};
+
+export const getPendingUsers = () => {
+  return api.get("/api/v1/users/pending");
 };

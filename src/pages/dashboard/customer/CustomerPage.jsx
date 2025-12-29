@@ -19,6 +19,7 @@ import {
   adminUpdateCustomerProfileThunk,
   updateAdvancePayment,
   activateCustomer,
+  rejectCustomer,
   changeRoomCustomer,
   vacateUserRoom,
   cancelVacation,
@@ -244,6 +245,12 @@ const CustomerPage = () => {
     }
   };
 
+  const handleRejectUser = (customer) => {
+    if (customer?.user_id) {
+      dispatch(rejectCustomer(customer.user_id));
+    }
+  };
+
   const handleViewLogs = (customer) => {
     setSelectedCustomerForLogs(customer);
     setActivityLogsModalVisible(true);
@@ -343,6 +350,7 @@ const CustomerPage = () => {
           setAdvanceModalVisible(true);
         }}
         onActivate={handleActivateUser}
+        onReject={handleRejectUser}
         onReassign={(record) => {
           // Open onboard modal with full mode to reassign the user
           openModal("onboard", record, "full");
@@ -416,11 +424,7 @@ const CustomerPage = () => {
         okText={modalState.type === "delete" ? "Delete" : modalState.type === "vacate" ? "Vacate" : modalState.type === "cancelVacation" ? "Cancel Vacation" : "Remove"}
       />
 
-      <UserActivityLogsModal
-        visible={activityLogsModalVisible}
-        onCancel={handleCloseActivityLogsModal}
-        customer={selectedCustomerForLogs}
-      />
+      <UserActivityLogsModal visible={activityLogsModalVisible} onCancel={handleCloseActivityLogsModal} customer={selectedCustomerForLogs} />
     </Card>
   );
 };
