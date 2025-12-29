@@ -147,6 +147,7 @@ const SignupOnboardModal = ({ visible, onCancel, onSubmit, loading, error }) => 
     // Generate PDF and add it to FormData as an ID proof (without downloading)
     let pdfResult = null;
     try {
+      console.log("[PDF] Starting PDF generation...");
       pdfResult = generateCustomerPDF(customerDataForPDF, {
         tenantName: user?.tenant_name || "PG Management",
         autoDownload: false, // Don't download yet, wait for successful response
@@ -154,13 +155,18 @@ const SignupOnboardModal = ({ visible, onCancel, onSubmit, loading, error }) => 
         signature: signatureDataURL || undefined, // Pass signature image data URL
       });
 
+      console.log("[PDF] PDF generation result:", pdfResult ? "Success" : "Failed", pdfResult);
+
       // Add the generated PDF file to FormData as an ID proof
       if (pdfResult && pdfResult.file) {
         formData.append("id_proofs", pdfResult.file);
-        console.log("PDF added to FormData as ID proof:", pdfResult.fileName);
+        console.log("[PDF] PDF added to FormData as ID proof:", pdfResult.fileName, "File size:", pdfResult.file.size, "bytes");
+      } else {
+        console.warn("[PDF] PDF generation returned null or file is missing. pdfResult:", pdfResult);
       }
     } catch (pdfError) {
-      console.error("Error generating PDF for upload:", pdfError);
+      console.error("[PDF] Error generating PDF for upload:", pdfError);
+      console.error("[PDF] Error stack:", pdfError.stack);
       // Continue with submission even if PDF generation fails
     }
 

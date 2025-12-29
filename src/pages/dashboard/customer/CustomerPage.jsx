@@ -163,11 +163,30 @@ const CustomerPage = () => {
         // Download PDF only after successful customer creation
         if (pdfResult && pdfResult.doc && pdfResult.fileName) {
           try {
+            console.log("[PDF Download] Attempting to download PDF:", pdfResult.fileName);
             pdfResult.doc.save(pdfResult.fileName);
+            console.log("[PDF Download] PDF downloaded successfully");
             toast.success("PDF generated and downloaded successfully!");
           } catch (pdfError) {
-            console.error("Error downloading PDF:", pdfError);
+            console.error("[PDF Download] Error downloading PDF:", pdfError);
+            console.error("[PDF Download] Error stack:", pdfError?.stack);
             toast.error("Customer created successfully, but PDF download failed.");
+          }
+        } else {
+          console.warn("[PDF Download] PDF not available for download. pdfResult:", pdfResult);
+          // Check if PDF was uploaded to S3 and can be downloaded from there
+          if (response.data?.data?.user?.id_proof_urls) {
+            const pdfUrl = response.data.data.user.id_proof_urls.find((url) => url.endsWith(".pdf"));
+            if (pdfUrl) {
+              console.log("[PDF Download] PDF found in S3, downloading from:", pdfUrl);
+              const link = document.createElement("a");
+              link.href = pdfUrl;
+              link.download = `Customer_Registration_${response.data.data.user.name || "Customer"}_${Date.now()}.pdf`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              toast.success("PDF downloaded from server!");
+            }
           }
         }
 

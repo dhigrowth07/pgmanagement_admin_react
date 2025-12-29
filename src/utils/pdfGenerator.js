@@ -127,354 +127,362 @@ const htmlToPlainText = (html) => {
  * @returns {Object} - Object containing doc, file, fileName, and blob
  */
 export const generateCustomerPDF = (customerData, options = {}) => {
-  const { autoDownload = false, tenantName, termsAndConditions, signature } = options;
-  const doc = new jsPDF();
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 20;
-  const maxWidth = pageWidth - 2 * margin;
-  let yPosition = margin;
+  try {
+    const { autoDownload = false, tenantName, termsAndConditions, signature } = options;
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    const maxWidth = pageWidth - 2 * margin;
+    let yPosition = margin;
 
-  // Helper function to add a new page if needed
-  const checkPageBreak = (requiredSpace = 20) => {
-    if (yPosition + requiredSpace > pageHeight - margin) {
-      doc.addPage();
-      yPosition = margin;
-      return true;
-    }
-    return false;
-  };
-
-  // Helper function to add a section title
-  const addSectionTitle = (title, fontSize = 14) => {
-    checkPageBreak(15);
-    yPosition += 2; // Reduced spacing before section
-    doc.setFontSize(fontSize);
-    doc.setFont("helvetica", "bold");
-    doc.text(title, margin, yPosition);
-    yPosition += 6; // Reduced spacing after title
-  };
-
-  // Helper function to add a label-value pair
-  const addField = (label, value, isBold = false) => {
-    checkPageBreak(8);
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    const labelWidth = doc.getTextWidth(label + ": ");
-    doc.text(label + ":", margin, yPosition);
-
-    doc.setFont("helvetica", isBold ? "bold" : "normal");
-    const displayValue = value || "N/A";
-    // Handle long text by splitting into multiple lines
-    const textLines = doc.splitTextToSize(displayValue, maxWidth - labelWidth - margin);
-    doc.text(textLines, margin + labelWidth, yPosition);
-    yPosition += textLines.length * 6; // Reduced line height from 7 to 6
-  };
-
-  // Helper function to render structured terms and conditions
-  const renderTermsAndConditions = (text) => {
-    if (!text || text.trim() === "") return;
-
-    const lines = text.split("\n");
-    const normalFontSize = 9;
-    const headingFontSize = 11;
-    const normalLineHeight = 5;
-    const headingLineHeight = 7;
-    const paragraphSpacing = 3;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(normalFontSize);
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-
-      // Skip empty lines (they represent paragraph breaks)
-      if (line === "") {
-        yPosition += paragraphSpacing;
-        continue;
+    // Helper function to add a new page if needed
+    const checkPageBreak = (requiredSpace = 20) => {
+      if (yPosition + requiredSpace > pageHeight - margin) {
+        doc.addPage();
+        yPosition = margin;
+        return true;
       }
+      return false;
+    };
 
-      // Check if this is a heading
-      if (line.startsWith("[HEADING]")) {
-        const headingText = line.replace("[HEADING]", "").trim();
-        checkPageBreak(headingLineHeight + 5);
+    // Helper function to add a section title
+    const addSectionTitle = (title, fontSize = 14) => {
+      checkPageBreak(15);
+      yPosition += 2; // Reduced spacing before section
+      doc.setFontSize(fontSize);
+      doc.setFont("helvetica", "bold");
+      doc.text(title, margin, yPosition);
+      yPosition += 6; // Reduced spacing after title
+    };
 
-        // Add extra space before heading
-        if (i > 0 && lines[i - 1]?.trim() !== "") {
-          yPosition += 3;
+    // Helper function to add a label-value pair
+    const addField = (label, value, isBold = false) => {
+      checkPageBreak(8);
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      const labelWidth = doc.getTextWidth(label + ": ");
+      doc.text(label + ":", margin, yPosition);
+
+      doc.setFont("helvetica", isBold ? "bold" : "normal");
+      const displayValue = value || "N/A";
+      // Handle long text by splitting into multiple lines
+      const textLines = doc.splitTextToSize(displayValue, maxWidth - labelWidth - margin);
+      doc.text(textLines, margin + labelWidth, yPosition);
+      yPosition += textLines.length * 6; // Reduced line height from 7 to 6
+    };
+
+    // Helper function to render structured terms and conditions
+    const renderTermsAndConditions = (text) => {
+      if (!text || text.trim() === "") return;
+
+      const lines = text.split("\n");
+      const normalFontSize = 9;
+      const headingFontSize = 11;
+      const normalLineHeight = 5;
+      const headingLineHeight = 7;
+      const paragraphSpacing = 3;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(normalFontSize);
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+
+        // Skip empty lines (they represent paragraph breaks)
+        if (line === "") {
+          yPosition += paragraphSpacing;
+          continue;
         }
 
-        doc.setFontSize(headingFontSize);
-        doc.setFont("helvetica", "bold");
+        // Check if this is a heading
+        if (line.startsWith("[HEADING]")) {
+          const headingText = line.replace("[HEADING]", "").trim();
+          checkPageBreak(headingLineHeight + 5);
 
-        // Split heading if too long
-        const headingLines = doc.splitTextToSize(headingText, maxWidth);
-        headingLines.forEach((headingLine) => {
-          checkPageBreak(headingLineHeight + 2);
-          doc.text(headingLine, margin, yPosition);
-          yPosition += headingLineHeight;
-        });
+          // Add extra space before heading
+          if (i > 0 && lines[i - 1]?.trim() !== "") {
+            yPosition += 3;
+          }
 
-        doc.setFontSize(normalFontSize);
-        doc.setFont("helvetica", "normal");
-        yPosition += 2; // Small space after heading
-      } else {
-        // Regular text or list item
-        checkPageBreak(normalLineHeight + 2);
+          doc.setFontSize(headingFontSize);
+          doc.setFont("helvetica", "bold");
 
-        // Check if it's a list item (starts with number or bullet)
-        const isListItem = /^(\d+\.|•)\s/.test(line);
-
-        if (isListItem) {
-          // List item - indent slightly
-          const indent = 5;
-          const textLines = doc.splitTextToSize(line, maxWidth - indent);
-          textLines.forEach((textLine) => {
-            checkPageBreak(normalLineHeight + 2);
-            doc.text(textLine, margin + indent, yPosition);
-            yPosition += normalLineHeight;
+          // Split heading if too long
+          const headingLines = doc.splitTextToSize(headingText, maxWidth);
+          headingLines.forEach((headingLine) => {
+            checkPageBreak(headingLineHeight + 2);
+            doc.text(headingLine, margin, yPosition);
+            yPosition += headingLineHeight;
           });
+
+          doc.setFontSize(normalFontSize);
+          doc.setFont("helvetica", "normal");
+          yPosition += 2; // Small space after heading
         } else {
-          // Regular paragraph text
-          const textLines = doc.splitTextToSize(line, maxWidth);
-          textLines.forEach((textLine) => {
-            checkPageBreak(normalLineHeight + 2);
-            doc.text(textLine, margin, yPosition);
-            yPosition += normalLineHeight;
-          });
+          // Regular text or list item
+          checkPageBreak(normalLineHeight + 2);
+
+          // Check if it's a list item (starts with number or bullet)
+          const isListItem = /^(\d+\.|•)\s/.test(line);
+
+          if (isListItem) {
+            // List item - indent slightly
+            const indent = 5;
+            const textLines = doc.splitTextToSize(line, maxWidth - indent);
+            textLines.forEach((textLine) => {
+              checkPageBreak(normalLineHeight + 2);
+              doc.text(textLine, margin + indent, yPosition);
+              yPosition += normalLineHeight;
+            });
+          } else {
+            // Regular paragraph text
+            const textLines = doc.splitTextToSize(line, maxWidth);
+            textLines.forEach((textLine) => {
+              checkPageBreak(normalLineHeight + 2);
+              doc.text(textLine, margin, yPosition);
+              yPosition += normalLineHeight;
+            });
+          }
         }
       }
+    };
+
+    // Helper function to add a horizontal line
+    const addHorizontalLine = () => {
+      checkPageBreak(5);
+      doc.setLineWidth(0.3);
+      doc.line(margin, yPosition, pageWidth - margin, yPosition);
+      yPosition += 5;
+    };
+
+    // ============================================
+    // HEADER SECTION
+    // ============================================
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.text("Terms and Conditions", pageWidth / 2, yPosition, { align: "center" });
+    yPosition += 10;
+
+    // Tenant Name (if available)
+    if (tenantName) {
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Tenant: ${tenantName}`, pageWidth / 2, yPosition, { align: "center" });
+      yPosition += 8;
     }
-  };
 
-  // Helper function to add a horizontal line
-  const addHorizontalLine = () => {
-    checkPageBreak(5);
-    doc.setLineWidth(0.3);
-    doc.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 5;
-  };
+    // Date of Registration (Human-readable format)
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "italic");
+    const registrationDate = dayjs().format("DD MMM YYYY, h:mm A");
+    doc.text(`Date: ${registrationDate}`, pageWidth / 2, yPosition, { align: "center" });
+    yPosition += 10;
 
-  // ============================================
-  // HEADER SECTION
-  // ============================================
-  doc.setFontSize(20);
-  doc.setFont("helvetica", "bold");
-  doc.text("Terms and Conditions", pageWidth / 2, yPosition, { align: "center" });
-  yPosition += 10;
+    // Line separator
+    addHorizontalLine();
 
-  // Tenant Name (if available)
-  if (tenantName) {
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Tenant: ${tenantName}`, pageWidth / 2, yPosition, { align: "center" });
-    yPosition += 8;
-  }
+    // ============================================
+    // PERSONAL INFORMATION SECTION
+    // ============================================
+    addSectionTitle("Personal Information", 14);
 
-  // Date of Registration (Human-readable format)
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "italic");
-  const registrationDate = dayjs().format("DD MMM YYYY, h:mm A");
-  doc.text(`Date: ${registrationDate}`, pageWidth / 2, yPosition, { align: "center" });
-  yPosition += 10;
+    doc.setFontSize(10);
+    addField("Full Name", customerData.name);
+    addField("Email", customerData.email);
+    addField("Phone Number", customerData.phone);
 
-  // Line separator
-  addHorizontalLine();
+    // Gender
+    const gender = customerData.gender ? customerData.gender.charAt(0).toUpperCase() + customerData.gender.slice(1).toLowerCase() : null;
+    addField("Gender", gender);
 
-  // ============================================
-  // PERSONAL INFORMATION SECTION
-  // ============================================
-  addSectionTitle("Personal Information", 14);
-
-  doc.setFontSize(10);
-  addField("Full Name", customerData.name);
-  addField("Email", customerData.email);
-  addField("Phone Number", customerData.phone);
-
-  // Gender
-  const gender = customerData.gender ? customerData.gender.charAt(0).toUpperCase() + customerData.gender.slice(1).toLowerCase() : null;
-  addField("Gender", gender);
-
-  // Date of Birth
-  let dob = "N/A";
-  if (customerData.dob) {
-    if (typeof customerData.dob === "string") {
-      dob = dayjs(customerData.dob).format("DD-MM-YYYY");
-    } else if (customerData.dob.format) {
-      // dayjs object
-      dob = customerData.dob.format("DD-MM-YYYY");
-    } else {
-      dob = dayjs(customerData.dob).format("DD-MM-YYYY");
+    // Date of Birth
+    let dob = "N/A";
+    if (customerData.dob) {
+      if (typeof customerData.dob === "string") {
+        dob = dayjs(customerData.dob).format("DD-MM-YYYY");
+      } else if (customerData.dob.format) {
+        // dayjs object
+        dob = customerData.dob.format("DD-MM-YYYY");
+      } else {
+        dob = dayjs(customerData.dob).format("DD-MM-YYYY");
+      }
     }
-  }
-  addField("Date of Birth", dob);
+    addField("Date of Birth", dob);
 
-  // Add spacing before next section (reduced)
-  yPosition += 3;
-
-  // ============================================
-  // EMERGENCY CONTACTS SECTION
-  // ============================================
-  addSectionTitle("Emergency Contacts", 14);
-
-  doc.setFontSize(10);
-  addField("Emergency Contact 1", customerData.emergency_number_one);
-  addField("Emergency Contact 2", customerData.emergency_number_two);
-
-  // Add spacing before next section (reduced)
-  yPosition += 3;
-
-  // ============================================
-  // ROOM ASSIGNMENT SECTION
-  // ============================================
-  addSectionTitle("Room Assignment", 14);
-
-  doc.setFontSize(10);
-  addField("Room Number", customerData.room_number);
-
-  // Advance Amount (formatted as currency with proper INR formatting)
-  // Using "INR" text for better PDF compatibility (₹ symbol may not render correctly in jsPDF)
-  let advanceAmount = "INR 0.00";
-  if (customerData.advance_amount !== undefined && customerData.advance_amount !== null && customerData.advance_amount !== "") {
-    const amount = parseFloat(customerData.advance_amount);
-    if (!isNaN(amount) && amount > 0) {
-      // Format with Indian number system (lakhs, crores) - e.g., 1,00,000.00
-      const formattedAmount = amount.toLocaleString("en-IN", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      });
-      advanceAmount = `INR ${formattedAmount}`;
-    }
-  }
-  addField("Advance Amount", advanceAmount);
-
-  // Add spacing before next section (reduced)
-  yPosition += 3;
-
-  // ============================================
-  // ADDITIONAL INFORMATION SECTION
-  // ============================================
-  addSectionTitle("Additional Information", 14);
-
-  doc.setFontSize(10);
-
-  // ID Proofs count
-  let idProofCount = 0;
-  if (customerData.id_proofs) {
-    if (Array.isArray(customerData.id_proofs)) {
-      idProofCount = customerData.id_proofs.length;
-    } else if (typeof customerData.id_proofs === "number") {
-      idProofCount = customerData.id_proofs;
-    }
-  }
-  addField("ID Proofs", `${idProofCount} document(s) uploaded`);
-
-  // Profile Image status
-  const hasProfileImage = customerData.profile_image === true || customerData.profile_image === "true" || (customerData.profile_image && customerData.profile_image.length > 0);
-  addField("Profile Image", hasProfileImage ? "Uploaded" : "Not provided");
-
-  // Add spacing before next section (reduced)
-  yPosition += 3;
-
-  // ============================================
-  // TERMS AND CONDITIONS SECTION
-  // ============================================
-  if (termsAndConditions) {
+    // Add spacing before next section (reduced)
     yPosition += 3;
 
-    // Convert HTML to formatted plain text
-    const termsText = htmlToPlainText(termsAndConditions);
+    // ============================================
+    // EMERGENCY CONTACTS SECTION
+    // ============================================
+    addSectionTitle("Emergency Contacts", 14);
 
-    if (termsText) {
-      // Render structured terms and conditions
-      renderTermsAndConditions(termsText);
+    doc.setFontSize(10);
+    addField("Emergency Contact 1", customerData.emergency_number_one);
+    addField("Emergency Contact 2", customerData.emergency_number_two);
+
+    // Add spacing before next section (reduced)
+    yPosition += 3;
+
+    // ============================================
+    // ROOM ASSIGNMENT SECTION
+    // ============================================
+    addSectionTitle("Room Assignment", 14);
+
+    doc.setFontSize(10);
+    addField("Room Number", customerData.room_number);
+
+    // Advance Amount (formatted as currency with proper INR formatting)
+    // Using "INR" text for better PDF compatibility (₹ symbol may not render correctly in jsPDF)
+    let advanceAmount = "INR 0.00";
+    if (customerData.advance_amount !== undefined && customerData.advance_amount !== null && customerData.advance_amount !== "") {
+      const amount = parseFloat(customerData.advance_amount);
+      if (!isNaN(amount) && amount > 0) {
+        // Format with Indian number system (lakhs, crores) - e.g., 1,00,000.00
+        const formattedAmount = amount.toLocaleString("en-IN", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+        advanceAmount = `INR ${formattedAmount}`;
+      }
+    }
+    addField("Advance Amount", advanceAmount);
+
+    // Add spacing before next section (reduced)
+    yPosition += 3;
+
+    // ============================================
+    // ADDITIONAL INFORMATION SECTION
+    // ============================================
+    addSectionTitle("Additional Information", 14);
+
+    doc.setFontSize(10);
+
+    // ID Proofs count
+    let idProofCount = 0;
+    if (customerData.id_proofs) {
+      if (Array.isArray(customerData.id_proofs)) {
+        idProofCount = customerData.id_proofs.length;
+      } else if (typeof customerData.id_proofs === "number") {
+        idProofCount = customerData.id_proofs;
+      }
+    }
+    addField("ID Proofs", `${idProofCount} document(s) uploaded`);
+
+    // Profile Image status
+    const hasProfileImage = customerData.profile_image === true || customerData.profile_image === "true" || (customerData.profile_image && customerData.profile_image.length > 0);
+    addField("Profile Image", hasProfileImage ? "Uploaded" : "Not provided");
+
+    // Add spacing before next section (reduced)
+    yPosition += 3;
+
+    // ============================================
+    // TERMS AND CONDITIONS SECTION
+    // ============================================
+    if (termsAndConditions) {
+      yPosition += 3;
+
+      // Convert HTML to formatted plain text
+      const termsText = htmlToPlainText(termsAndConditions);
+
+      if (termsText) {
+        // Render structured terms and conditions
+        renderTermsAndConditions(termsText);
+      } else {
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "italic");
+        doc.text("Terms and conditions not available.", margin, yPosition);
+        yPosition += 7;
+      }
+
+      // Add spacing before footer
+      yPosition += 10;
     } else {
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "italic");
-      doc.text("Terms and conditions not available.", margin, yPosition);
-      yPosition += 7;
+      // Add spacing before footer if no terms
+      yPosition += 10;
     }
 
-    // Add spacing before footer
-    yPosition += 10;
-  } else {
-    // Add spacing before footer if no terms
-    yPosition += 10;
-  }
+    // ============================================
+    // SIGNATURE SECTION
+    // ============================================
+    if (signature) {
+      // Add spacing before signature
+      yPosition += 15;
+      checkPageBreak(50); // Ensure enough space for signature
 
-  // ============================================
-  // SIGNATURE SECTION
-  // ============================================
-  if (signature) {
-    // Add spacing before signature
-    yPosition += 15;
-    checkPageBreak(50); // Ensure enough space for signature
+      // Signature image dimensions - smaller size
+      const signatureWidth = 60;
+      const signatureHeight = 20; // Smaller height
+      const signatureX = pageWidth - signatureWidth - margin; // Right-aligned to right edge with margin
 
-    // Signature image dimensions - smaller size
-    const signatureWidth = 60;
-    const signatureHeight = 20; // Smaller height
-    const signatureX = pageWidth - signatureWidth - margin; // Right-aligned to right edge with margin
+      try {
+        // Add signature label first, right-aligned
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
+        const labelText = "Signature:";
+        const labelWidth = doc.getTextWidth(labelText);
+        const labelX = signatureX + signatureWidth - labelWidth; // Right-aligned label
+        doc.text(labelText, labelX, yPosition);
 
-    try {
-      // Add signature label first, right-aligned
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "bold");
-      const labelText = "Signature:";
-      const labelWidth = doc.getTextWidth(labelText);
-      const labelX = signatureX + signatureWidth - labelWidth; // Right-aligned label
-      doc.text(labelText, labelX, yPosition);
+        // Add signature image below the label
+        yPosition += 8; // Small space after label
+        const signatureY = yPosition;
+        doc.addImage(signature, "PNG", signatureX, signatureY, signatureWidth, signatureHeight);
 
-      // Add signature image below the label
-      yPosition += 8; // Small space after label
-      const signatureY = yPosition;
-      doc.addImage(signature, "PNG", signatureX, signatureY, signatureWidth, signatureHeight);
-
-      yPosition += signatureHeight + 10; // Add space after signature section
-    } catch (error) {
-      console.error("Error adding signature to PDF:", error);
-      // If image fails to load, just add text
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "italic");
-      doc.text("Signature image could not be loaded", signatureX, yPosition + 20);
-      yPosition += 30;
+        yPosition += signatureHeight + 10; // Add space after signature section
+      } catch (error) {
+        console.error("Error adding signature to PDF:", error);
+        // If image fails to load, just add text
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "italic");
+        doc.text("Signature image could not be loaded", signatureX, yPosition + 20);
+        yPosition += 30;
+      }
     }
+
+    // ============================================
+    // FOOTER SECTION
+    // ============================================
+    const footerY = pageHeight - 15;
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor(128, 128, 128); // Gray color
+    doc.text("This is a system-generated document.", pageWidth / 2, footerY, { align: "center" });
+    doc.text("Generated by PG Management System", pageWidth / 2, footerY + 5, { align: "center" });
+    doc.setTextColor(0, 0, 0); // Reset to black
+
+    // ============================================
+    // GENERATE FILENAME AND SAVE
+    // ============================================
+    // Generate filename: Customer_Registration_{Name}_{Timestamp}.pdf
+    const customerName = customerData.name ? customerData.name.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_]/g, "") : "Customer";
+    const timestamp = dayjs().format("YYYYMMDD_HHmmss");
+    const fileName = `Customer_Registration_${customerName}_${timestamp}.pdf`;
+
+    // Get PDF blob for uploading to backend
+    const pdfBlob = doc.output("blob");
+
+    // Create File object from blob for FormData
+    const pdfFile = new File([pdfBlob], fileName, { type: "application/pdf" });
+
+    // Save the PDF (download for user) only if autoDownload is true
+    if (autoDownload) {
+      doc.save(fileName);
+    }
+
+    // Return both the doc and the file for backend upload
+    return {
+      doc,
+      file: pdfFile,
+      fileName,
+      blob: pdfBlob,
+    };
+  } catch (error) {
+    console.error("[PDF Generator] Error generating PDF:", error);
+    console.error("[PDF Generator] Error stack:", error.stack);
+    console.error("[PDF Generator] Customer data:", customerData);
+    console.error("[PDF Generator] Options:", options);
+    throw error; // Re-throw to let caller handle it
   }
-
-  // ============================================
-  // FOOTER SECTION
-  // ============================================
-  const footerY = pageHeight - 15;
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "italic");
-  doc.setTextColor(128, 128, 128); // Gray color
-  doc.text("This is a system-generated document.", pageWidth / 2, footerY, { align: "center" });
-  doc.text("Generated by PG Management System", pageWidth / 2, footerY + 5, { align: "center" });
-  doc.setTextColor(0, 0, 0); // Reset to black
-
-  // ============================================
-  // GENERATE FILENAME AND SAVE
-  // ============================================
-  // Generate filename: Customer_Registration_{Name}_{Timestamp}.pdf
-  const customerName = customerData.name ? customerData.name.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_]/g, "") : "Customer";
-  const timestamp = dayjs().format("YYYYMMDD_HHmmss");
-  const fileName = `Customer_Registration_${customerName}_${timestamp}.pdf`;
-
-  // Get PDF blob for uploading to backend
-  const pdfBlob = doc.output("blob");
-
-  // Create File object from blob for FormData
-  const pdfFile = new File([pdfBlob], fileName, { type: "application/pdf" });
-
-  // Save the PDF (download for user) only if autoDownload is true
-  if (autoDownload) {
-    doc.save(fileName);
-  }
-
-  // Return both the doc and the file for backend upload
-  return {
-    doc,
-    file: pdfFile,
-    fileName,
-    blob: pdfBlob,
-  };
 };
