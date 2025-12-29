@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { Form, Input, Button, DatePicker, Select, Upload, Alert, Typography, Row, Col } from "antd";
+import { Form, Input, Button, DatePicker, Select, Upload, Alert, Typography, Row, Col, message } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useSearchParams } from "react-router-dom";
 import api from "../../services/api";
 import toast from "react-hot-toast";
+import { generateCustomerPDF } from "../../utils/pdfGenerator";
+import { getTermsAndConditions } from "../../services/tenantAdminsService";
+import { resizeSignatureImage, imageToDataURL } from "../../utils/imageResizer";
 
 const { Title, Paragraph, Text } = Typography;
 const { Option } = Select;
@@ -19,6 +22,12 @@ const UserOnboardPage = () => {
   const [idProofFileList, setIdProofFileList] = useState([]);
   /** @type {[Array<any>, Function]} */
   const [availableRooms, setAvailableRooms] = useState([]);
+  /** @type {[Array<any>, Function]} */
+  const [signatureFileList, setSignatureFileList] = useState([]);
+  /** @type {[string | null, Function]} */
+  const [termsAndConditions, setTermsAndConditions] = useState(null);
+  /** @type {[string, Function]} */
+  const [tenantName, setTenantName] = useState("PG Management"); // Default tenant name for PDF
 
   useEffect(() => {
     // Read tenant_id and admin_id from URL query parameters
@@ -49,7 +58,28 @@ const UserOnboardPage = () => {
       }
     };
 
+    const fetchTermsAndConditions = async () => {
+      try {
+        const response = await getTermsAndConditions();
+        if (response?.data?.data) {
+          // Extract terms and conditions
+          if (response.data.data.terms_and_conditions) {
+            setTermsAndConditions(response.data.data.terms_and_conditions);
+          }
+          // Extract tenant name from response
+          if (response.data.data.tenant_name) {
+            setTenantName(response.data.data.tenant_name);
+            console.log("[UserOnboard] Tenant name retrieved:", response.data.data.tenant_name);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch terms and conditions:", err);
+        // Don't show error to user, just log it - PDF will be generated without terms if fetch fails
+      }
+    };
+
     fetchRooms();
+    fetchTermsAndConditions();
   }, [searchParams]);
 
   const handleFinish = async (values) => {
@@ -119,6 +149,62 @@ const UserOnboardPage = () => {
       return;
     }
 
+    // Process signature image if uploaded (resize and convert to base64 for PDF)
+    let signatureDataURL = null;
+    if (signatureFileList.length > 0 && signatureFileList[0].originFileObj) {
+      try {
+        const signatureFile = signatureFileList[0].originFileObj;
+        // Resize signature to appropriate size (max 200x80 for signature)
+        const resizedSignature = await resizeSignatureImage(signatureFile, 200, 80, 0.9);
+        // Convert to base64 data URL for PDF
+        signatureDataURL = await imageToDataURL(resizedSignature);
+      } catch (signatureError) {
+        console.error("Error processing signature image:", signatureError);
+        message.warning("Failed to process signature image. PDF will be generated without signature.");
+      }
+    }
+
+    // Prepare customer data object for PDF generation
+    const customerDataForPDF = {
+      name: values.name?.trim() || "",
+      email: values.email?.trim() || "",
+      phone: values.phone?.trim() || "",
+      gender: values.gender?.toLowerCase() || "",
+      dob: values.dob || null, // Keep as dayjs object for PDF generator
+      emergency_number_one: values.emergency_number_one?.trim() || "",
+      emergency_number_two: values.emergency_number_two?.trim() || "",
+      room_number: values.room_number?.trim() || "",
+      advance_amount: values.advance_amount !== undefined && values.advance_amount !== null && values.advance_amount !== "" ? values.advance_amount : 0,
+      id_proofs: idProofFileList,
+      profile_image: values.profile_image && values.profile_image.length > 0,
+    };
+
+    // Generate PDF and add it to FormData as an ID proof (without downloading)
+    let pdfResult = null;
+    try {
+      console.log("[PDF] Starting PDF generation...");
+      pdfResult = generateCustomerPDF(customerDataForPDF, {
+        tenantName: tenantName,
+        autoDownload: false, // Don't download yet, wait for successful response
+        termsAndConditions: termsAndConditions || undefined, // Pass terms and conditions to PDF generator
+        signature: signatureDataURL || undefined, // Pass signature image data URL
+      });
+
+      console.log("[PDF] PDF generation result:", pdfResult ? "Success" : "Failed", pdfResult);
+
+      // Add the generated PDF file to FormData as an ID proof
+      if (pdfResult && pdfResult.file) {
+        formData.append("id_proofs", pdfResult.file);
+        console.log("[PDF] PDF added to FormData as ID proof:", pdfResult.fileName, "File size:", pdfResult.file.size, "bytes");
+      } else {
+        console.warn("[PDF] PDF generation returned null or file is missing. pdfResult:", pdfResult);
+      }
+    } catch (pdfError) {
+      console.error("[PDF] Error generating PDF for upload:", pdfError);
+      console.error("[PDF] Error stack:", pdfError.stack);
+      // Continue with submission even if PDF generation fails
+    }
+
     setSubmitting(true);
     try {
       const response = await api.post("/api/v1/users/signup-onboard", formData, {
@@ -128,8 +214,36 @@ const UserOnboardPage = () => {
       });
 
       toast.success(response.data?.msg || "Onboarding request submitted successfully. You will be activated by the admin.");
+
+      // Download PDF only after successful submission
+      if (pdfResult && pdfResult.doc && pdfResult.fileName) {
+        try {
+          console.log("[PDF Download] Attempting to download PDF:", pdfResult.fileName);
+          pdfResult.doc.save(pdfResult.fileName);
+          console.log("[PDF Download] PDF downloaded successfully");
+          toast.success("PDF generated and downloaded successfully!");
+        } catch (pdfError) {
+          console.error("[PDF Download] Error downloading PDF:", pdfError);
+          // Check if PDF was uploaded to S3 and can be downloaded from there
+          if (response.data?.data?.user?.id_proof_urls) {
+            const pdfUrl = response.data.data.user.id_proof_urls.find((url) => url.endsWith(".pdf"));
+            if (pdfUrl) {
+              console.log("[PDF Download] PDF found in S3, downloading from:", pdfUrl);
+              const link = document.createElement("a");
+              link.href = pdfUrl;
+              link.download = `Customer_Registration_${response.data.data.user.name || "Customer"}_${Date.now()}.pdf`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              toast.success("PDF downloaded from server!");
+            }
+          }
+        }
+      }
+
       form.resetFields();
       setIdProofFileList([]);
+      setSignatureFileList([]);
     } catch (err) {
       const msg = err?.response?.data?.msg || err?.message || "Failed to submit onboarding form. Please try again.";
       setError(msg);
@@ -256,6 +370,13 @@ const UserOnboardPage = () => {
               multiple
               fileList={idProofFileList}
               beforeUpload={(file) => {
+                // Validate file type (JPEG, PNG, WebP, PDF only)
+                const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "application/pdf"];
+                const isValidType = allowedTypes.includes(file.type);
+                if (!isValidType) {
+                  message.error(`${file.name} is not a valid file type. Please upload only JPEG, PNG, WebP, or PDF files.`);
+                  return false;
+                }
                 const fileWithMeta = {
                   uid: file.uid || `${file.name}-${Date.now()}`,
                   name: file.name,
@@ -268,6 +389,7 @@ const UserOnboardPage = () => {
               onRemove={(file) => {
                 setIdProofFileList((prev) => prev.filter((f) => f.uid !== file.uid));
               }}
+              accept="image/jpeg,image/jpg,image/png,image/webp,.pdf,application/pdf"
               listType="text"
             >
               <Button icon={<UploadOutlined />}>Upload ID Proofs</Button>
@@ -275,6 +397,49 @@ const UserOnboardPage = () => {
             <Text type="secondary" style={{ fontSize: 12 }}>
               Supported formats: images or PDFs. At least one document is required (e.g. Aadhar, PAN, Passport, etc.).
             </Text>
+          </Form.Item>
+
+          <Form.Item name="signature" label="Signature (Optional)" valuePropName="fileList" getValueFromEvent={(e) => (Array.isArray(e) ? e : e && e.fileList ? e.fileList : [])}>
+            <div>
+              <Upload
+                fileList={signatureFileList}
+                beforeUpload={(file) => {
+                  // Validate file type (images only, no PDF)
+                  const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+                  if (!allowedTypes.includes(file.type)) {
+                    message.error("Signature must be an image file (JPEG, PNG, or WebP)");
+                    setSignatureFileList([]);
+                    return false;
+                  }
+                  // Validate file size (max 5MB)
+                  const maxSize = 5 * 1024 * 1024; // 5MB
+                  if (file.size > maxSize) {
+                    message.error("Signature image must be smaller than 5MB");
+                    setSignatureFileList([]);
+                    return false;
+                  }
+                  const fileWithMeta = {
+                    uid: file.uid || `${file.name}-${Date.now()}`,
+                    name: file.name,
+                    status: "done",
+                    originFileObj: file,
+                  };
+                  setSignatureFileList([fileWithMeta]);
+                  return false;
+                }}
+                onRemove={() => {
+                  setSignatureFileList([]);
+                }}
+                maxCount={1}
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                listType="picture-card"
+              >
+                {signatureFileList.length < 1 && <div>+ Upload Signature</div>}
+              </Upload>
+              <Text type="secondary" style={{ fontSize: 12, display: "block", marginTop: 8 }}>
+                Max 5MB. Supported: JPEG, PNG, WebP. Image will be automatically resized for PDF.
+              </Text>
+            </div>
           </Form.Item>
 
           <Form.Item style={{ marginTop: 16 }}>
