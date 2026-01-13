@@ -155,6 +155,10 @@ const UserOnboardPage2 = () => {
       formData.append("room_number", values.room_number.trim());
     }
 
+    if (values.joining_date) {
+      formData.append("joining_date", values.joining_date.format("YYYY-MM-DD"));
+    }
+
     if (values.advance_amount !== undefined && values.advance_amount !== null && values.advance_amount !== "") {
       formData.append("advance_amount", values.advance_amount);
     }
@@ -451,6 +455,45 @@ const UserOnboardPage2 = () => {
                 label: `${room.block_name || "Block"} - ${room.room_number} (${room.current_occupancy}/${room.capacity})`,
                 value: room.room_number,
               }))}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="joining_date"
+            label="Joining Date (Optional)"
+            tooltip="Date when you will join/start occupancy. If not provided, current date will be used. Can be up to 10 days in the future."
+            rules={[
+              {
+                validator: (_, value) => {
+                  if (!value) {
+                    return Promise.resolve(); // Optional field
+                  }
+                  const selectedDate = dayjs(value);
+                  const today = dayjs().startOf("day");
+                  const maxFutureDate = today.add(10, "days");
+
+                  if (selectedDate.isBefore(today, "day")) {
+                    return Promise.reject(new Error("Joining date cannot be in the past"));
+                  }
+                  if (selectedDate.isAfter(maxFutureDate, "day")) {
+                    return Promise.reject(new Error("Joining date cannot be more than 10 days in the future"));
+                  }
+                  return Promise.resolve();
+                },
+              },
+            ]}
+          >
+            <DatePicker
+              format="DD-MM-YYYY"
+              style={{ width: "100%" }}
+              disabledDate={(current) => {
+                if (!current) return false;
+                const today = dayjs().startOf("day");
+                const maxFuture = today.add(10, "days");
+                // Disable dates in the past and dates more than 10 days in future
+                return current < today || current > maxFuture;
+              }}
+              placeholder="Select joining date (optional)"
             />
           </Form.Item>
 

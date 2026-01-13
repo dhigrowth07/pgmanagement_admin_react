@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Table, Button, Tag, Dropdown, Menu } from "antd";
-import { EyeOutlined, CheckCircleOutlined, EllipsisOutlined, DollarOutlined } from "@ant-design/icons";
+import { EyeOutlined, CheckCircleOutlined, EllipsisOutlined, DollarOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useDispatch } from "react-redux";
 import { markShareAsPaid, fetchUserBills } from "../../../redux/electricity/electricitySlice";
 import toast from "react-hot-toast";
@@ -95,7 +95,7 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, onCreate
           </>
         )}
         <Menu.Divider />
-        {/* <Menu.Item key="delete" icon={<DeleteOutlined />} danger onClick={() => onDelete(record)}>
+        {/*  <Menu.Item key="delete" icon={<DeleteOutlined />} danger onClick={() => onDelete(record)}>
           Delete Record
         </Menu.Item> */}
       </Menu>
@@ -154,10 +154,28 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, onCreate
     const tariff = tariffLookup[record.tariff_id] || {};
     // Use fixed_fee and variable_fee directly from payment record (sent by backend)
     // Fall back to tariff lookup for backward compatibility
-    const rentBase = Number(record.fixed_fee ?? tariff.fixed_fee ?? 0);
-    // For rent, use fixed_fee from record/tariff if available, otherwise use amount_due (calculated from current tariff)
-    // Note: stored_amount_due is the remaining balance after payments, not the original rent amount
-    const rent = rentBase > 0 ? rentBase : record.rent || Number(record.amount_due ?? 0);
+    const fullFixedFee = Number(record.fixed_fee ?? tariff.fixed_fee ?? 0);
+    const fullVariableFee = Number(record.variable_fee ?? tariff.variable_fee ?? 0);
+    const fullBaseAmount = fullFixedFee + fullVariableFee;
+
+    // Get the actual amount_due (may be prorated for vacating users)
+    const actualAmountDue = Number(record.amount_due ?? 0);
+
+    // Check if payment is prorated (amount_due differs from full amount and is less)
+    // This indicates the user is vacating mid-cycle
+    const isProrated = fullBaseAmount > 0 && actualAmountDue > 0 && actualAmountDue < fullBaseAmount;
+
+    // Calculate prorated rent: if prorated, calculate proportionally
+    // Otherwise use full fixed_fee
+    let rent;
+    if (isProrated) {
+      // Calculate prorated rent proportionally: (amount_due / full_amount) * fixed_fee
+      const prorationRatio = actualAmountDue / fullBaseAmount;
+      rent = fullFixedFee * prorationRatio;
+    } else {
+      // Use full fixed_fee (no proration)
+      rent = fullFixedFee > 0 ? fullFixedFee : record.rent || actualAmountDue;
+    }
 
     // Get electricity amounts (only actual electricity bills, not variable_fee)
     const unpaidEBAmount = getUnpaidElectricityAmount(record.user_id);
@@ -182,12 +200,20 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, onCreate
 
     // Get variable_fee from payment record (sent by backend) or tariff lookup (fallback)
     // This represents the base electricity/utility charge
-    const variableFee = Number(record.variable_fee ?? tariff.variable_fee ?? 0);
+    // If prorated, calculate variable_fee proportionally as well
+    let variableFee;
+    if (isProrated) {
+      // Calculate prorated variable_fee proportionally: (amount_due / full_amount) * variable_fee
+      const prorationRatio = actualAmountDue / fullBaseAmount;
+      variableFee = fullVariableFee * prorationRatio;
+    } else {
+      variableFee = Number(record.variable_fee ?? tariff.variable_fee ?? 0);
+    }
 
-    // Calculate total: rent (fixed_fee) + variable_fee + actual electricity bills
-    // This matches the backend's amount_due which includes fixed_fee + variable_fee
-    // The backend balance_payable_amount includes both fixed_fee and variable_fee, so our total should too
-    const total = rent + variableFee + ebTotal;
+    // Calculate total: rent (prorated if applicable) + variable_fee (prorated if applicable) + actual electricity bills
+    // For prorated payments, use actualAmountDue + ebTotal
+    // For non-prorated, use rent + variableFee + ebTotal
+    const total = isProrated ? actualAmountDue + ebTotal : rent + variableFee + ebTotal;
 
     // Use balance_payable_amount from API for remaining balance (most accurate)
     // This field correctly shows 0 for paid payments and actual remaining for due payments
@@ -206,7 +232,8 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, onCreate
 
     // Calculate rent portion of paid amount proportionally (for display purposes)
     // This shows how much of the rent portion (fixed_fee) was paid
-    const totalBaseAmount = rent + variableFee; // fixed_fee + variable_fee
+    // For prorated payments, use actualAmountDue; otherwise use rent + variableFee
+    const totalBaseAmount = isProrated ? actualAmountDue : rent + variableFee;
     const totalRentAndVariablePaid = totalBaseAmount - rentRemainingFromApi;
     const rentPaid = totalBaseAmount > 0 ? (rent / totalBaseAmount) * totalRentAndVariablePaid : 0;
 

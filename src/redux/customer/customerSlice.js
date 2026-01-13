@@ -37,7 +37,11 @@ export const fetchPendingUsers = createAsyncThunk("customer/fetchPending", async
 export const addNewCustomer = createAsyncThunk("customer/addNew", async (customerData, { dispatch, rejectWithValue }) => {
   try {
     const response = await customerService.createCustomer(customerData);
-    toast.success(response.data.msg || "Customer created successfully!");
+    const customerId = response.data?.data?.user?.customer_id;
+    const successMessage = customerId
+      ? `${response.data.msg || "Customer created successfully!"} Customer ID: ${customerId}`
+      : response.data.msg || "Customer created successfully!";
+    toast.success(successMessage);
     dispatch(fetchAllCustomers());
     return response.data.data.user;
   } catch (error) {
@@ -112,10 +116,10 @@ export const changeRoomCustomer = createAsyncThunk("customer/changeRoom", async 
   }
 });
 
-export const vacateUserRoom = createAsyncThunk("customer/vacateRoom", async (userId, { dispatch, rejectWithValue }) => {
+export const vacateUserRoom = createAsyncThunk("customer/vacateRoom", async ({ userId, vacatingDate = null }, { dispatch, rejectWithValue }) => {
   try {
-    const response = await customerService.vacateUserRoom(userId);
-    toast.success(response.data.msg || "User scheduled to vacate at end of current month.");
+    const response = await customerService.vacateUserRoom(userId, vacatingDate);
+    toast.success(response.data.msg || "User scheduled to vacate successfully.");
     dispatch(fetchAllCustomers());
     return response.data.data;
   } catch (error) {
@@ -269,6 +273,19 @@ export const rejectCustomer = createAsyncThunk("customer/reject", async (userId,
   } catch (error) {
     const errorData = handleApiError(error);
     toast.error(errorData.msg || "Failed to reject user.");
+    return rejectWithValue(errorData);
+  }
+});
+
+export const updateCustomerId = createAsyncThunk("customer/updateCustomerId", async ({ userId, customerId }, { dispatch, rejectWithValue }) => {
+  try {
+    const response = await customerService.updateCustomerId(userId, customerId);
+    toast.success(response.data.msg || "Customer ID updated successfully!");
+    dispatch(fetchAllCustomers());
+    return response.data.data;
+  } catch (error) {
+    const errorData = handleApiError(error);
+    toast.error(errorData.msg || "Failed to update customer ID.");
     return rejectWithValue(errorData);
   }
 });

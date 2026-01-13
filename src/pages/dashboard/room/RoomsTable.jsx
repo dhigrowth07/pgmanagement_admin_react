@@ -23,7 +23,6 @@ const RoomCard = ({ room, onEdit, onView }) => {
           {room.current_occupancy} / {room.capacity} beds
         </div>
         <span className={`inline-block w-2 h-2 bg-${status.color}-500 rounded-full mt-2`} />
-        <span className="text-xs text-gray-500 ml-1">ID: {room.room_id}</span>
       </div>
       <div className="absolute top-1 right-1 group-hover:opacity-100 transition-opacity">
         <Dropdown

@@ -152,6 +152,13 @@ const UserViewModal = ({ visible, onCancel, customer }) => {
         >
           <Text strong>{customer.name}</Text>
         </Descriptions.Item>
+        {customer.customer_id && (
+          <Descriptions.Item label="Customer ID">
+            <Tag color="purple" style={{ fontSize: "13px", padding: "4px 12px", fontWeight: 500 }}>
+              {customer.customer_id}
+            </Tag>
+          </Descriptions.Item>
+        )}
         <Descriptions.Item
           label={
             <Space>
@@ -178,6 +185,15 @@ const UserViewModal = ({ visible, onCancel, customer }) => {
           }
         >
           {customer.dob ? dayjs(customer.dob).format("DD MMMM, YYYY") : "N/A"}
+        </Descriptions.Item>
+        <Descriptions.Item
+          label={
+            <Space>
+              <CalendarOutlined /> Joining Date
+            </Space>
+          }
+        >
+          {customer.joining_date ? dayjs(customer.joining_date).format("DD MMMM, YYYY") : "N/A"}
         </Descriptions.Item>
         <Descriptions.Item label="Gender">{customer.gender || "N/A"}</Descriptions.Item>
         <Descriptions.Item

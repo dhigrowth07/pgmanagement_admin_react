@@ -23,6 +23,7 @@ import {
   changeRoomCustomer,
   vacateUserRoom,
   cancelVacation,
+  updateCustomerId,
 } from "../../../redux/customer/customerSlice";
 import { signupOnboardCustomer } from "../../../services/customerService";
 import { selectUser } from "../../../redux/auth/authSlice";
@@ -43,6 +44,8 @@ import BulkImportModal from "./components/BulkImportModal";
 import AdminProfileUpdateModal from "./components/AdminProfileUpdateModal";
 import AdvanceUpdateModal from "./components/AdvanceUpdateModal";
 import UserActivityLogsModal from "./components/UserActivityLogsModal";
+import CustomerIdUpdateModal from "./components/CustomerIdUpdateModal";
+import VacateRoomModal from "./components/VacateRoomModal";
 import toast from "react-hot-toast";
 
 const { Title } = Typography;
@@ -81,7 +84,11 @@ const CustomerPage = () => {
   const filteredCustomers = useMemo(() => {
     const filtered = customers.filter((customer) => {
       const search = searchTerm.trim().toLowerCase();
-      const searchMatch = !search || (customer.name || "").toLowerCase().includes(search) || (customer.email || "").toLowerCase().includes(search);
+      const searchMatch =
+        !search ||
+        (customer.name || "").toLowerCase().includes(search) ||
+        (customer.email || "").toLowerCase().includes(search) ||
+        (customer.customer_id || "").toLowerCase().includes(search);
 
       // Status filter - match against the status field from API response
       let statusMatch = true;
@@ -158,7 +165,11 @@ const CustomerPage = () => {
     try {
       const response = await signupOnboardCustomer(formData);
       if (response.data?.status === 201 || response.status === 201) {
-        toast.success(response.data?.msg || "Customer created successfully!");
+        const customerId = response.data?.data?.user?.customer_id;
+        const successMessage = customerId
+          ? `${response.data?.msg || "Customer created successfully!"} Customer ID: ${customerId}`
+          : response.data?.msg || "Customer created successfully!";
+        toast.success(successMessage);
 
         // Download PDF only after successful customer creation
         if (pdfResult && pdfResult.doc && pdfResult.fileName) {
@@ -217,12 +228,19 @@ const CustomerPage = () => {
       dispatch(deleteCustomer(modalState.data.user_id));
     } else if (modalState.type === "removeFromRoom") {
       dispatch(removeUserFromRoom(modalState.data.user_id));
-    } else if (modalState.type === "vacate") {
-      dispatch(vacateUserRoom(modalState.data.user_id));
     } else if (modalState.type === "cancelVacation") {
       dispatch(cancelVacation(modalState.data.user_id));
     }
     closeModal();
+  };
+
+  const handleVacateSubmit = (vacatingDate) => {
+    if (!modalState.data) return;
+    dispatch(vacateUserRoom({ userId: modalState.data.user_id, vacatingDate })).then((res) => {
+      if (!res.error) {
+        closeModal();
+      }
+    });
   };
 
   const handleTariffSubmit = ({ tariff_id }) => {
@@ -280,6 +298,15 @@ const CustomerPage = () => {
     setSelectedCustomerForLogs(null);
   };
 
+  const handleUpdateCustomerId = (customerId) => {
+    if (!modalState.data?.user_id) return;
+    dispatch(updateCustomerId({ userId: modalState.data.user_id, customerId })).then((res) => {
+      if (!res.error) {
+        closeModal();
+      }
+    });
+  };
+
   return (
     <Card bordered={false}>
       <Row justify="space-between" align="middle" gutter={[16, 16]} style={{ marginBottom: 16 }}>
@@ -302,7 +329,7 @@ const CustomerPage = () => {
 
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} sm={24} md={8}>
-          <Input.Search placeholder="Search by name or email..." onSearch={(val) => setSearchTerm(val || "")} enterButton allowClear style={{ width: "100%" }} />
+          <Input.Search placeholder="Search by name, email, or customer ID..." onSearch={(val) => setSearchTerm(val || "")} enterButton allowClear style={{ width: "100%" }} />
         </Col>
         <Col xs={24} sm={24} md={16}>
           <Row gutter={[8, 8]} justify="start">
@@ -377,6 +404,7 @@ const CustomerPage = () => {
         onVacateRoom={(record) => openModal("vacate", record)}
         onCancelVacation={(record) => openModal("cancelVacation", record)}
         onViewLogs={handleViewLogs}
+        onUpdateCustomerId={(record) => openModal("updateCustomerId", record)}
       />
 
       <SignupOnboardModal visible={modalState.type === "signup"} onCancel={closeModal} onSubmit={handleSignupSubmit} loading={isSignupLoading} error={null} />
@@ -406,6 +434,7 @@ const CustomerPage = () => {
       <UserViewModal visible={modalState.type === "view"} onCancel={closeModal} customer={modalState.data} />
       <TariffChangeModal visible={modalState.type === "changeTariff"} onCancel={closeModal} onSubmit={handleTariffSubmit} loading={isActionLoading} customer={modalState.data} tariffs={tariffs} />
       <ChangePasswordModal visible={modalState.type === "changePassword"} onCancel={closeModal} onSubmit={handleChangePassword} loading={isActionLoading} customer={modalState.data} />
+      <CustomerIdUpdateModal visible={modalState.type === "updateCustomerId"} onCancel={closeModal} onSubmit={handleUpdateCustomerId} loading={isActionLoading} customer={modalState.data} />
       <BulkImportModal visible={isImportModalVisible} onCancel={closeImportModal} onSubmit={handleBulkImportSubmit} loading={isActionLoading} apiResult={bulkImportResult} />
       <AdvanceUpdateModal
         visible={advanceModalVisible}
@@ -426,21 +455,27 @@ const CustomerPage = () => {
         loading={customerStatus === "loading_action"}
       />
 
+      <VacateRoomModal
+        visible={modalState.type === "vacate"}
+        customer={modalState.data}
+        onCancel={closeModal}
+        onSubmit={handleVacateSubmit}
+        loading={isActionLoading}
+      />
+
       <DeleteConfirmModal
-        visible={modalState.type === "delete" || modalState.type === "removeFromRoom" || modalState.type === "vacate" || modalState.type === "cancelVacation"}
+        visible={modalState.type === "delete" || modalState.type === "removeFromRoom" || modalState.type === "cancelVacation"}
         onCancel={closeModal}
         onConfirm={handleConfirmDelete}
         title={`Confirm Action: ${modalState.data?.name || "Customer"}`}
         content={
           modalState.type === "delete"
             ? "Are you sure you want to permanently delete this customer?"
-            : modalState.type === "vacate"
-            ? "Are you sure you want to schedule this customer to vacate at the end of the current month? They will be automatically removed from their room on that date."
             : modalState.type === "cancelVacation"
             ? "Are you sure you want to cancel this customer's scheduled vacation? They will remain in their room."
             : "Are you sure you want to remove this customer from their room? This will also unassign their tariff."
         }
-        okText={modalState.type === "delete" ? "Delete" : modalState.type === "vacate" ? "Vacate" : modalState.type === "cancelVacation" ? "Cancel Vacation" : "Remove"}
+        okText={modalState.type === "delete" ? "Delete" : modalState.type === "cancelVacation" ? "Cancel Vacation" : "Remove"}
       />
 
       <UserActivityLogsModal visible={activityLogsModalVisible} onCancel={handleCloseActivityLogsModal} customer={selectedCustomerForLogs} />

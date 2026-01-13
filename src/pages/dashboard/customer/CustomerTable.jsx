@@ -20,6 +20,7 @@ import {
   CloseCircleOutlined,
   FileTextOutlined,
   CloseOutlined,
+  IdcardOutlined,
 } from "@ant-design/icons";
 
 const CustomerTable = ({
@@ -40,6 +41,7 @@ const CustomerTable = ({
   onVacateRoom,
   onCancelVacation,
   onViewLogs,
+  onUpdateCustomerId,
 }) => {
   const [pagination, setPagination] = useState({
     current: 1,
@@ -112,6 +114,13 @@ const CustomerTable = ({
               </Menu.Item>
             )}
 
+            {/* Customer ID update - available for all non-pending users */}
+            {onUpdateCustomerId && (
+              <Menu.Item key="updateCustomerId" icon={<IdcardOutlined />} onClick={() => onUpdateCustomerId(record)}>
+                Update Customer ID
+              </Menu.Item>
+            )}
+
             {record.room_id && (
               <>
                 {/* <Menu.Item key="tariff" icon={<SwapOutlined />} onClick={() => onChangeTariff(record)}>
@@ -123,10 +132,19 @@ const CustomerTable = ({
                 <Menu.Item key="password" icon={<KeyOutlined />} onClick={() => onChangePassword(record)}>
                   Change Password
                 </Menu.Item>
-                {hasScheduledVacation && onCancelVacation && (
-                  <Menu.Item key="cancelVacation" icon={<CloseCircleOutlined />} onClick={() => onCancelVacation(record)}>
-                    Cancel Vacation
-                  </Menu.Item>
+                {hasScheduledVacation && (
+                  <>
+                    {onVacateRoom && (
+                      <Menu.Item key="updateVacation" icon={<CalendarOutlined />} onClick={() => onVacateRoom(record)}>
+                        Update Vacation Date
+                      </Menu.Item>
+                    )}
+                    {onCancelVacation && (
+                      <Menu.Item key="cancelVacation" icon={<CloseCircleOutlined />} onClick={() => onCancelVacation(record)}>
+                        Cancel Vacation
+                      </Menu.Item>
+                    )}
+                  </>
                 )}
                 {!hasScheduledVacation && onVacateRoom && (
                   <Menu.Item key="vacate" icon={<CalendarOutlined />} onClick={() => onVacateRoom(record)}>
@@ -160,6 +178,24 @@ const CustomerTable = ({
           </div>
         </Space>
       ),
+    },
+    {
+      title: "Customer ID",
+      dataIndex: "customer_id",
+      key: "customer_id",
+      render: (customerId) =>
+        customerId ? (
+          <Tag color="purple" style={{ fontSize: "13px", padding: "4px 12px", fontWeight: 500 }}>
+            {customerId}
+          </Tag>
+        ) : (
+          <Tag color="default">N/A</Tag>
+        ),
+      sorter: (a, b) => {
+        const idA = a.customer_id || "";
+        const idB = b.customer_id || "";
+        return idA.localeCompare(idB);
+      },
     },
     {
       title: "Phone",
@@ -228,14 +264,14 @@ const CustomerTable = ({
     },
     {
       title: "Joining Date",
-      dataIndex: "created_at",
+      dataIndex: "joining_date",
       key: "joining_date",
       render: (date) => (date ? dayjs(date).format("DD MMM YYYY") : "N/A"),
       sorter: (a, b) => {
-        if (!a.created_at && !b.created_at) return 0;
-        if (!a.created_at) return 1;
-        if (!b.created_at) return -1;
-        return dayjs(a.created_at).unix() - dayjs(b.created_at).unix();
+        if (!a.joining_date && !b.joining_date) return 0;
+        if (!a.joining_date) return 1;
+        if (!b.joining_date) return -1;
+        return dayjs(a.joining_date).unix() - dayjs(b.joining_date).unix();
       },
     },
     {
@@ -246,7 +282,34 @@ const CustomerTable = ({
         // Show vacated_date if exists, otherwise show vacating_on if exists
         const dateToShow = vacatedDate || record.vacating_on;
         if (dateToShow) {
-          return dayjs(dateToShow).format("DD MMM YYYY");
+          const date = dayjs(dateToShow);
+          const today = dayjs().startOf('day');
+          const isCustomDate = record.vacating_on && !vacatedDate; // Custom date if it's a future vacating_on
+          const daysLeft = isCustomDate ? date.startOf('day').diff(today, 'day') : null;
+
+          return (
+            <Tooltip
+              title={
+                isCustomDate
+                  ? `Scheduled to vacate on ${date.format("DD MMMM, YYYY")}${daysLeft !== null ? ` (${daysLeft} day${daysLeft !== 1 ? "s" : ""} left)` : ""}`
+                  : `Vacated on ${date.format("DD MMMM, YYYY")}`
+              }
+            >
+              <Space>
+                <span>{date.format("DD MMM YYYY")}</span>
+                {isCustomDate && daysLeft !== null && daysLeft > 0 && (
+                  <Tag color="orange" style={{ fontSize: "11px" }}>
+                    {daysLeft}d left
+                  </Tag>
+                )}
+                {isCustomDate && daysLeft === 0 && (
+                  <Tag color="red" style={{ fontSize: "11px" }}>
+                    Last day
+                  </Tag>
+                )}
+              </Space>
+            </Tooltip>
+          );
         }
         return "N/A";
       },

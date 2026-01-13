@@ -86,8 +86,9 @@ export const changeRoomCustomer = (userId, roomId) => {
   return api.put(`/api/v1/users/${userId}/change-room`, { room_id: roomId });
 };
 
-export const vacateUserRoom = (userId) => {
-  return api.put(`/api/v1/users/${userId}/vacate`);
+export const vacateUserRoom = (userId, vacatingDate = null) => {
+  const body = vacatingDate ? { vacating_date: vacatingDate } : {};
+  return api.put(`/api/v1/users/${userId}/vacate`, body);
 };
 
 export const cancelVacation = (userId) => {
@@ -96,4 +97,8 @@ export const cancelVacation = (userId) => {
 
 export const getPendingUsers = () => {
   return api.get("/api/v1/users/pending");
+};
+
+export const updateCustomerId = (userId, customerId) => {
+  return api.put(`/api/v1/users/${userId}/customer-id`, { customer_id: customerId });
 };
