@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import { generateCustomerPDF } from "../../utils/pdfGenerator";
 import { getTermsAndConditions } from "../../services/tenantAdminsService";
 import { resizeSignatureImage, imageToDataURL } from "../../utils/imageResizer";
+import { getPublicAvailableBeds } from "../../services/bedService";
 
 const { Title, Paragraph, Text } = Typography;
 const { Option } = Select;
@@ -31,6 +32,12 @@ const UserOnboardPage2 = () => {
   const [termsAndConditions, setTermsAndConditions] = useState(null);
   /** @type {[string, Function]} */
   const [tenantName, setTenantName] = useState("PG Management"); // Default tenant name for PDF
+  /** @type {[Array<any>, Function]} */
+  const [availableBeds, setAvailableBeds] = useState([]);
+  /** @type {[boolean, Function]} */
+  const [loadingBeds, setLoadingBeds] = useState(false);
+  /** @type {[string | null, Function]} */
+  const [selectedRoomId, setSelectedRoomId] = useState(null);
   /** @type {[Array<any>, Function]} */
   const [customFields, setCustomFields] = useState([]);
 
@@ -113,7 +120,45 @@ const UserOnboardPage2 = () => {
     fetchCustomFields();
   }, [searchParams]);
 
-  const handleFinish = async (values) => {
+  useEffect(() => {
+    const fetchBeds = async () => {
+      if (!selectedRoomId) {
+        setAvailableBeds([]);
+        return;
+      }
+
+      setLoadingBeds(true);
+      try {
+        const tenantIdFromUrl = searchParams.get("tenant_id");
+        const adminIdFromUrl = searchParams.get("admin_id") || "";
+        const tenantId = tenantIdFromUrl || "6a4dc5af-ee9a-4128-a78f-dcb4b0c32330";
+
+        const response = await getPublicAvailableBeds(selectedRoomId, tenantId, adminIdFromUrl);
+        setAvailableBeds(response.data?.data || []);
+      } catch (err) {
+        console.error("Failed to fetch beds:", err);
+        message.error("Failed to load available beds for the selected room");
+        setAvailableBeds([]);
+      } finally {
+        setLoadingBeds(false);
+      }
+    };
+
+    fetchBeds();
+  }, [selectedRoomId, searchParams]);
+
+  /** @param {string} roomNumber */
+  const handleRoomChange = (roomNumber) => {
+    const selectedRoom = availableRooms.find((r) => r.room_number === roomNumber);
+    if (selectedRoom) {
+      setSelectedRoomId(selectedRoom.room_id);
+    } else {
+      setSelectedRoomId(null);
+    }
+    form.setFieldsValue({ bed_id: undefined });
+  };
+
+  const handleFinish = async (/** @type {any} */ values) => {
     setError(null);
 
     // Ensure tenant_id is set (from URL params or fallback)
@@ -153,6 +198,10 @@ const UserOnboardPage2 = () => {
 
     if (values.room_number) {
       formData.append("room_number", values.room_number.trim());
+    }
+
+    if (values.bed_id) {
+      formData.append("bed_id", values.bed_id);
     }
 
     if (values.joining_date) {
@@ -223,6 +272,9 @@ const UserOnboardPage2 = () => {
       }
     }
 
+    // Find bed code for PDF
+    const selectedBed = availableBeds.find((b) => b.bed_id === values.bed_id);
+
     // Prepare customer data object for PDF generation
     const customerDataForPDF = {
       name: values.name?.trim() || "",
@@ -233,6 +285,7 @@ const UserOnboardPage2 = () => {
       emergency_number_one: values.emergency_number_one?.trim() || "",
       emergency_number_two: values.emergency_number_two?.trim() || "",
       room_number: values.room_number?.trim() || "",
+      bed_code: selectedBed ? selectedBed.bed_code : "",
       advance_amount: values.advance_amount !== undefined && values.advance_amount !== null && values.advance_amount !== "" ? values.advance_amount : 0,
       id_proofs: idProofFileList,
       profile_image: values.profile_image && values.profile_image.length > 0,
@@ -451,11 +504,26 @@ const UserOnboardPage2 = () => {
               disabled={availableRooms.length === 0}
               showSearch
               optionFilterProp="label"
+              onChange={handleRoomChange}
               options={availableRooms.map((room) => ({
                 label: `${room.block_name || "Block"} - ${room.room_number} (${room.current_occupancy}/${room.capacity})`,
                 value: room.room_number,
               }))}
             />
+          </Form.Item>
+
+          <Form.Item name="bed_id" label="Preferred Bed" rules={[{ required: true, message: "Please select a bed" }]}>
+            <Select
+              placeholder={!selectedRoomId ? "Select a room first" : loadingBeds ? "Loading beds..." : availableBeds.length === 0 ? "No beds available" : "Select a bed"}
+              disabled={!selectedRoomId || loadingBeds || availableBeds.length === 0}
+              loading={loadingBeds}
+            >
+              {availableBeds.map((bed) => (
+                <Option key={bed.bed_id} value={bed.bed_id}>
+                  {bed.bed_code}
+                </Option>
+              ))}
+            </Select>
           </Form.Item>
 
           <Form.Item

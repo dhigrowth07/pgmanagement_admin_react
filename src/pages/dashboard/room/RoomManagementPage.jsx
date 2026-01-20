@@ -26,6 +26,7 @@ import DeleteConfirmModal from "../../../components/Modals/DeleteConfirmModal";
 import TariffFormModal from "./components/TariffFormModal";
 import RoomPresetFormModal from "./components/RoomPresetFormModal";
 import GoogleReviewModal from "./components/GoogleReviewModal";
+import BedManagementModal from "./components/BedManagementModal";
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -76,6 +77,7 @@ const RoomManagementPage = () => {
   const [filters, setFilters] = useState({ block: "all", status: "all", search: "" });
   const [managementModal, setManagementModal] = useState(null);
   const [reviewModal, setReviewModal] = useState({ visible: false, block: null });
+  const [bedModal, setBedModal] = useState({ visible: false, room: null });
 
   useEffect(() => {
     dispatch(fetchRoomsData());
@@ -89,6 +91,9 @@ const RoomManagementPage = () => {
 
   const openManagementModal = (type) => setManagementModal(type);
   const closeManagementModal = () => setManagementModal(null);
+
+  const openBedModal = (room) => setBedModal({ visible: true, room });
+  const closeBedModal = () => setBedModal({ visible: false, room: null });
 
   const handleFilterChange = (key, value) => setFilters((prev) => ({ ...prev, [key]: value }));
 
@@ -327,6 +332,7 @@ const RoomManagementPage = () => {
         onEditBlock={(block) => openModal("editBlock", block)}
         onDeleteBlock={(block) => openFormModal("deleteBlock", block)}
         onOpenReview={openReviewModal}
+        onManageBeds={openBedModal}
       />
 
       {/* Management Modals */}
@@ -402,6 +408,7 @@ const RoomManagementPage = () => {
         title="Confirm Deletion"
         content="Are you sure? This action might not be reversible."
       />
+      <BedManagementModal visible={bedModal.visible} onCancel={closeBedModal} room={bedModal.room} />
     </Card>
   );
 };

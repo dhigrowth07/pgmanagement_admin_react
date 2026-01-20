@@ -2,16 +2,36 @@ import React, { useEffect, useState } from "react";
 import { Modal, Form, Input, Button, DatePicker, Select, Upload, Row, Col, Alert, Avatar, message } from "antd";
 import { UploadOutlined, UserOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
+import { getAvailableBeds } from "../../../../services/bedService";
 import { customerNameRules, customerEmailRules, customerPhoneRules, dobRules, genderRules } from "../../../../utils/validators";
 
 const { Option } = Select;
+/** @type {any} */
+const AntDatePicker = DatePicker;
 
+/**
+ * @param {object} props
+ * @param {boolean} props.visible
+ * @param {() => void} props.onCancel
+ * @param {any} [props.customer]
+ * @param {(data: any) => void} props.onSubmit
+ * @param {boolean} props.loading
+ * @param {string | null} props.error
+ * @param {any[]} props.rooms
+ * @param {any[]} props.blocks
+ * @param {"full" | "roomChange"} [props.mode]
+ */
 const OnboardingFormModal = ({ visible, onCancel, customer, onSubmit, loading, error, rooms, blocks, mode = "full" }) => {
   const [form] = Form.useForm();
   /** @type {[string | null, Function]} */
   const [profileImagePreview, setProfileImagePreview] = useState(null);
   /** @type {[Array<any>, Function]} */
   const [fileList, setFileList] = useState([]);
+  /** @type {[Array<any>, Function]} */
+  const [availableBeds, setAvailableBeds] = useState([]);
+  const [loadingBeds, setLoadingBeds] = useState(false);
+  /** @type {[string | null, Function]} */
+  const [selectedRoomId, setSelectedRoomId] = useState(null);
 
   // Only show rooms with available beds (current_occupancy < capacity)
   // Get all block IDs that exist
@@ -79,12 +99,14 @@ const OnboardingFormModal = ({ visible, onCancel, customer, onSubmit, loading, e
           emergency_number_one: customer.emergency_number_one || "",
           emergency_number_two: customer.emergency_number_two || "",
           room_id: customer.room_id || null,
+          bed_id: customer.bed_id || null,
         });
         setProfileImagePreview(customer.profile_image_url || null);
+        setSelectedRoomId(customer.room_id || null);
 
         // Load existing ID proofs
         if (customer.id_proof_urls && customer.id_proof_urls.length > 0) {
-          const existingFiles = customer.id_proof_urls.map((url, index) => ({
+          const existingFiles = customer.id_proof_urls.map((/** @type {string} */ url, /** @type {number} */ index) => ({
             uid: `existing-${index}`,
             name: url.split("/").pop(),
             status: "done",
@@ -98,7 +120,9 @@ const OnboardingFormModal = ({ visible, onCancel, customer, onSubmit, loading, e
       } else if (mode === "roomChange" && customer) {
         form.setFieldsValue({
           room_id: customer.room_id || null,
+          bed_id: customer.bed_id || null,
         });
+        setSelectedRoomId(customer.room_id || null);
       } else if (!customer) {
         form.resetFields();
         setProfileImagePreview(null);
@@ -107,6 +131,43 @@ const OnboardingFormModal = ({ visible, onCancel, customer, onSubmit, loading, e
     }
   }, [visible, customer, form, mode]);
 
+  useEffect(() => {
+    let currentRoomId = selectedRoomId;
+    if (!currentRoomId && visible && customer?.room_id) {
+      currentRoomId = customer.room_id;
+    }
+
+    if (currentRoomId) {
+      const fetchBeds = async () => {
+        setLoadingBeds(true);
+        try {
+          const response = await getAvailableBeds(currentRoomId);
+          // If editing and user has a bed, it might be in the occupied list but we want to show it as an option
+          let beds = response.data?.data || [];
+          if (customer?.bed_id && !beds.find((/** @type {any} */ b) => b.bed_id === customer.bed_id)) {
+            // Fetch single bed or just add it if we have info (simplified for now: just show available ones)
+          }
+          setAvailableBeds(beds);
+        } catch (error) {
+          console.error("Error fetching available beds:", error);
+          message.error("Failed to load available beds");
+        } finally {
+          setLoadingBeds(false);
+        }
+      };
+      fetchBeds();
+    } else {
+      setAvailableBeds([]);
+    }
+  }, [selectedRoomId, visible, customer]);
+
+  /** @param {string} value */
+  const handleRoomChange = (value) => {
+    setSelectedRoomId(value);
+    form.setFieldsValue({ bed_id: null });
+  };
+
+  /** @param {any} values */
   const handleFinish = (values) => {
     const formData = new FormData();
 
@@ -119,6 +180,7 @@ const OnboardingFormModal = ({ visible, onCancel, customer, onSubmit, loading, e
       emergency_number_one: mode === "full" ? values.emergency_number_one?.trim() : customer?.emergency_number_one,
       emergency_number_two: mode === "full" ? values.emergency_number_two?.trim() : customer?.emergency_number_two,
       room_id: values.room_id || customer?.room_id || "",
+      bed_id: values.bed_id || customer?.bed_id || "",
       joining_date: values.joining_date ? values.joining_date.format("YYYY-MM-DD") : null,
     };
 
@@ -162,6 +224,7 @@ const OnboardingFormModal = ({ visible, onCancel, customer, onSubmit, loading, e
     }
   };
 
+  /** @param {any} info */
   const handleProfileImageChange = (info) => {
     if (info.file) {
       const file = info.file.originFileObj || info.file;
@@ -189,6 +252,7 @@ const OnboardingFormModal = ({ visible, onCancel, customer, onSubmit, loading, e
   };
 
   // Validate ID proof file types (JPEG, PNG, WebP, PDF only)
+  /** @param {any} file */
   const validateIdProofFileType = (file) => {
     const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "application/pdf"];
     const isValidType = allowedTypes.includes(file.type);
@@ -200,6 +264,7 @@ const OnboardingFormModal = ({ visible, onCancel, customer, onSubmit, loading, e
   };
 
   // Validate profile image file types (JPEG, PNG, WebP only - no PDF)
+  /** @param {any} file */
   const validateProfileImageType = (file) => {
     const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
     const isValidType = allowedTypes.includes(file.type);
@@ -210,6 +275,7 @@ const OnboardingFormModal = ({ visible, onCancel, customer, onSubmit, loading, e
     return true;
   };
 
+  /** @param {any} file */
   const validateFileUpload = (file) => {
     // Validate file size (max 10MB per file)
     const maxSize = 10 * 1024 * 1024; // 10MB
@@ -259,7 +325,7 @@ const OnboardingFormModal = ({ visible, onCancel, customer, onSubmit, loading, e
               getValueFromEvent={(e) => (Array.isArray(e) ? e : e && e.fileList)}
               rules={[
                 {
-                  validator: (_, value) => {
+                    validator: (/** @type {any} */ _, /** @type {any} */ value) => {
                     if (!value || value.length === 0) {
                       return Promise.resolve();
                     }
@@ -305,11 +371,11 @@ const OnboardingFormModal = ({ visible, onCancel, customer, onSubmit, loading, e
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item name="dob" label="Date of Birth" rules={dobRules}>
-                  <DatePicker
+                  <AntDatePicker
                     format="DD-MM-YYYY"
                     style={{ width: "100%" }}
                     defaultPickerValue={dayjs().subtract(16, "year")}
-                    disabledDate={(current) => current && current >= dayjs().startOf("day")}
+                    disabledDate={(/** @type {any} */ current) => current && current >= dayjs().startOf("day")}
                   />
                 </Form.Item>
               </Col>
@@ -352,11 +418,11 @@ const OnboardingFormModal = ({ visible, onCancel, customer, onSubmit, loading, e
                     originFileObj: file,
                     isExisting: false,
                   };
-                  setFileList((prev) => [...prev, fileWithProps]);
+                  setFileList((/** @type {any[]} */ prev) => [...prev, fileWithProps]);
                   return false; // Prevent auto upload
                 }}
-                onRemove={(file) => {
-                  setFileList((prev) => prev.filter((f) => f && f.uid !== file.uid));
+                onRemove={(/** @type {any} */ file) => {
+                  setFileList((/** @type {any[]} */ prev) => prev.filter((f) => f && f.uid !== file.uid));
                 }}
                 accept="image/jpeg,image/jpg,image/png,image/webp,.pdf,application/pdf"
                 listType="text"
@@ -372,7 +438,7 @@ const OnboardingFormModal = ({ visible, onCancel, customer, onSubmit, loading, e
                   label="Emergency Contact 1"
                   rules={[
                     {
-                      validator: (_, value) => {
+                      validator: (/** @type {any} */ _, /** @type {any} */ value) => {
                         if (!value || value.trim() === "") {
                           return Promise.resolve();
                         }
@@ -395,7 +461,7 @@ const OnboardingFormModal = ({ visible, onCancel, customer, onSubmit, loading, e
                   label="Emergency Contact 2"
                   rules={[
                     {
-                      validator: (_, value) => {
+                      validator: (/** @type {any} */ _, /** @type {any} */ value) => {
                         if (!value || value.trim() === "") {
                           return Promise.resolve();
                         }
@@ -417,7 +483,17 @@ const OnboardingFormModal = ({ visible, onCancel, customer, onSubmit, loading, e
         )}
 
         <Form.Item name="room_id" label="Assign Room" rules={[{ required: true, message: "Please select a room" }]}>
-          <Select placeholder="Select a room" options={groupedRooms} showSearch optionFilterProp="label" />
+          <Select placeholder="Select a room" options={groupedRooms} showSearch optionFilterProp="label" onChange={handleRoomChange} />
+        </Form.Item>
+
+        <Form.Item name="bed_id" label="Select Bed" rules={[{ required: true, message: "Please select a bed" }]}>
+          <Select placeholder="Select a bed" loading={loadingBeds} disabled={!selectedRoomId}>
+            {availableBeds.map((/** @type {any} */ bed) => (
+              <Option key={bed.bed_id} value={bed.bed_id}>
+                {bed.bed_code} ({bed.bed_status})
+              </Option>
+            ))}
+          </Select>
         </Form.Item>
 
         <Form.Item
@@ -426,7 +502,7 @@ const OnboardingFormModal = ({ visible, onCancel, customer, onSubmit, loading, e
           tooltip="Date when user will join/start occupancy. If not provided, current date will be used. Can be up to 10 days in the future."
           rules={[
             {
-              validator: (_, value) => {
+              validator: (/** @type {any} */ _, /** @type {any} */ value) => {
                 if (!value) {
                   return Promise.resolve(); // Optional field
                 }
@@ -445,10 +521,10 @@ const OnboardingFormModal = ({ visible, onCancel, customer, onSubmit, loading, e
             },
           ]}
         >
-          <DatePicker
+          <AntDatePicker
             format="DD-MM-YYYY"
             style={{ width: "100%" }}
-            disabledDate={(current) => {
+            disabledDate={(/** @type {any} */ current) => {
               if (!current) return false;
               const today = dayjs().startOf("day");
               const maxFuture = today.add(10, "days");

@@ -62,6 +62,7 @@ const CustomerPage = () => {
   const user = useSelector(selectUser);
 
   const [modalState, setModalState] = useState({ type: null, data: null });
+  /** @type {["full" | "roomChange", Function]} */
   const [onboardMode, setOnboardMode] = useState("full");
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState({ status: "all", room: "all", block: "all" });
@@ -72,17 +73,17 @@ const CustomerPage = () => {
   const [activityLogsModalVisible, setActivityLogsModalVisible] = useState(false);
   const [selectedCustomerForLogs, setSelectedCustomerForLogs] = useState(null);
 
-  const customerUpdateStatus = useSelector((state) => state.customer.status);
+  const customerUpdateStatus = useSelector((/** @type {any} */ state) => state.customer.status);
   const isAdminUpdateLoading = customerUpdateStatus === "loading_action";
   const isActionLoading = customerStatus === "loading_action";
 
   useEffect(() => {
-    dispatch(fetchAllCustomers());
-    dispatch(fetchRoomsData());
+    dispatch(/** @type {any} */ (fetchAllCustomers(undefined)));
+    dispatch(/** @type {any} */ (fetchRoomsData(undefined)));
   }, [dispatch]);
 
   const filteredCustomers = useMemo(() => {
-    const filtered = customers.filter((customer) => {
+    const filtered = customers.filter((/** @type {any} */ customer) => {
       const search = searchTerm.trim().toLowerCase();
       const searchMatch =
         !search ||
@@ -143,14 +144,14 @@ const CustomerPage = () => {
     return filtered;
   }, [customers, searchTerm, filters]);
 
-  const openModal = (type, data = null, mode = "full") => {
+  const openModal = (/** @type {any} */ type, /** @type {any} */ data = null, /** @type {any} */ mode = "full") => {
     setModalState({ type, data });
     if (type === "onboard") setOnboardMode(mode);
   };
 
-  const handleChangeRoom = ({ userId, roomId }) => {
+  const handleChangeRoom = (/** @type {any} */ { userId, roomId, bedId }) => {
     if (userId && roomId) {
-      dispatch(changeRoomCustomer({ userId, roomId })).then((res) => {
+      dispatch(/** @type {any} */ (changeRoomCustomer({ userId, roomId, bedId }))).then((/** @type {any} */ res) => {
         if (!res.error) {
           closeModal();
         }
@@ -160,7 +161,7 @@ const CustomerPage = () => {
 
   const closeModal = () => setModalState({ type: null, data: null });
 
-  const handleSignupSubmit = async (formData, customerDataForPDF = null, pdfResult = null) => {
+  const handleSignupSubmit = async (/** @type {any} */ formData, /** @type {any} */ customerDataForPDF = null, /** @type {any} */ pdfResult = null) => {
     setIsSignupLoading(true);
     try {
       const response = await signupOnboardCustomer(formData);
@@ -178,16 +179,16 @@ const CustomerPage = () => {
             pdfResult.doc.save(pdfResult.fileName);
             console.log("[PDF Download] PDF downloaded successfully");
             toast.success("PDF generated and downloaded successfully!");
-          } catch (pdfError) {
-            console.error("[PDF Download] Error downloading PDF:", pdfError);
-            console.error("[PDF Download] Error stack:", pdfError?.stack);
-            toast.error("Customer created successfully, but PDF download failed.");
-          }
+            } catch (/** @type {any} */ pdfError) {
+              console.error("[PDF Download] Error downloading PDF:", pdfError);
+              console.error("[PDF Download] Error stack:", pdfError?.stack);
+              toast.error("Customer created successfully, but PDF download failed.");
+            }
         } else {
           console.warn("[PDF Download] PDF not available for download. pdfResult:", pdfResult);
           // Check if PDF was uploaded to S3 and can be downloaded from there
           if (response.data?.data?.user?.id_proof_urls) {
-            const pdfUrl = response.data.data.user.id_proof_urls.find((url) => url.endsWith(".pdf"));
+            const pdfUrl = (/** @type {string[]} */ (response.data.data.user.id_proof_urls)).find((/** @type {any} */ url) => url.endsWith(".pdf"));
             if (pdfUrl) {
               console.log("[PDF Download] PDF found in S3, downloading from:", pdfUrl);
               const link = document.createElement("a");
@@ -201,12 +202,12 @@ const CustomerPage = () => {
           }
         }
 
-        dispatch(fetchAllCustomers()); // Refresh customer list
+        dispatch(/** @type {any} */ (fetchAllCustomers(undefined))); // Refresh customer list
         closeModal();
       } else {
         toast.error(response.data?.msg || "Failed to create customer");
       }
-    } catch (error) {
+    } catch (/** @type {any} */ error) {
       const errorMsg = error.response?.data?.msg || error.message || "Failed to create customer";
       toast.error(errorMsg);
     } finally {
@@ -214,81 +215,88 @@ const CustomerPage = () => {
     }
   };
 
-  const handleOnboardSubmit = (payload) => {
+  const handleOnboardSubmit = (/** @type {any} */ payload) => {
     if (payload.userId) {
-      dispatch(updateCustomer(payload)).then((res) => !res.error && closeModal());
+      dispatch(/** @type {any} */ (updateCustomer(payload))).then((/** @type {any} */ res) => !res.error && closeModal());
     } else {
-      dispatch(addNewCustomer(payload)).then((res) => !res.error && closeModal());
+      dispatch(/** @type {any} */ (addNewCustomer(payload))).then((/** @type {any} */ res) => !res.error && closeModal());
     }
   };
 
   const handleConfirmDelete = () => {
     if (!modalState.data) return;
+    const data = /** @type {any} */ (modalState.data);
     if (modalState.type === "delete") {
-      dispatch(deleteCustomer(modalState.data.user_id));
+      dispatch(/** @type {any} */ (deleteCustomer(data.user_id)));
     } else if (modalState.type === "removeFromRoom") {
-      dispatch(removeUserFromRoom(modalState.data.user_id));
+      dispatch(/** @type {any} */ (removeUserFromRoom(data.user_id)));
     } else if (modalState.type === "cancelVacation") {
-      dispatch(cancelVacation(modalState.data.user_id));
+      dispatch(/** @type {any} */ (cancelVacation(data.user_id)));
     }
     closeModal();
   };
 
-  const handleVacateSubmit = (vacatingDate) => {
+  const handleVacateSubmit = (/** @type {any} */ vacatingDate) => {
     if (!modalState.data) return;
-    dispatch(vacateUserRoom({ userId: modalState.data.user_id, vacatingDate })).then((res) => {
+    const data = /** @type {any} */ (modalState.data);
+    dispatch(/** @type {any} */ (vacateUserRoom({ userId: data.user_id, vacatingDate }))).then((/** @type {any} */ res) => {
       if (!res.error) {
         closeModal();
       }
     });
   };
 
-  const handleTariffSubmit = ({ tariff_id }) => {
+  const handleTariffSubmit = (/** @type {any} */ { tariff_id }) => {
     if (!modalState.data) return;
-    dispatch(updateUserTariff({ userId: modalState.data.user_id, tariffId: tariff_id })).then((res) => !res.error && closeModal());
+    const data = /** @type {any} */ (modalState.data);
+    dispatch(/** @type {any} */ (updateUserTariff({ userId: data.user_id, tariffId: tariff_id }))).then((/** @type {any} */ res) => !res.error && closeModal());
   };
 
-  const handleChangePassword = (newPassword) => {
+  const handleChangePassword = (/** @type {any} */ newPassword) => {
     if (!modalState.data) return;
-    dispatch(changeCustomerPassword({ userId: modalState.data.user_id, newPassword })).then((res) => !res.error && closeModal());
+    const data = /** @type {any} */ (modalState.data);
+    dispatch(/** @type {any} */ (changeCustomerPassword({ userId: data.user_id, newPassword }))).then((/** @type {any} */ res) => !res.error && closeModal());
   };
 
-  const handleBulkImportSubmit = (users) => dispatch(bulkImportCustomers(users));
+  const handleBulkImportSubmit = (/** @type {any[]} */ users) => dispatch(/** @type {any} */ (bulkImportCustomers(users)));
   const closeImportModal = () => {
     setIsImportModalVisible(false);
     dispatch(clearBulkImportResult());
   };
-  const handleFilterChange = (type, value) => {
+  const handleFilterChange = (/** @type {any} */ type, /** @type {any} */ value) => {
     const newFilters = { ...filters, [type]: value };
     setFilters(newFilters);
   };
 
-  const handleAdminProfileUpdate = (formData) => {
-    if (modalState.data?.user_id) {
-      dispatch(adminUpdateCustomerProfileThunk({ userId: modalState.data.user_id, formData })).then((res) => {
+  const handleAdminProfileUpdate = (/** @type {any} */ formData) => {
+    const data = /** @type {any} */ (modalState.data);
+    if (data?.user_id) {
+      dispatch(/** @type {any} */ (adminUpdateCustomerProfileThunk({ userId: data.user_id, formData }))).then((/** @type {any} */ res) => {
         if (!res.error) {
-          toast.success(res.payload?.msg || "Customer profile updated successfully!");
+          const payload = /** @type {any} */ (res.payload);
+          toast.success(payload?.msg || "Customer profile updated successfully!");
           closeModal();
         } else {
-          toast.error(res.payload?.msg || "Failed to update customer profile.");
+          const payload = /** @type {any} */ (res.payload);
+          toast.error(payload?.msg || "Failed to update customer profile.");
         }
       });
     }
   };
 
-  const handleActivateUser = (customer) => {
+  const handleActivateUser = (/** @type {any} */ customer) => {
     if (customer?.user_id) {
-      dispatch(activateCustomer(customer.user_id));
+      dispatch(/** @type {any} */ (activateCustomer(customer.user_id)));
     }
   };
 
-  const handleRejectUser = (customer) => {
+  const handleRejectUser = (/** @type {any} */ customer) => {
     if (customer?.user_id) {
-      dispatch(rejectCustomer(customer.user_id));
+      dispatch(/** @type {any} */ (rejectCustomer(customer.user_id)));
     }
   };
 
-  const handleViewLogs = (customer) => {
+  const handleViewLogs = (/** @type {any} */ customer) => {
     setSelectedCustomerForLogs(customer);
     setActivityLogsModalVisible(true);
   };
@@ -298,9 +306,10 @@ const CustomerPage = () => {
     setSelectedCustomerForLogs(null);
   };
 
-  const handleUpdateCustomerId = (customerId) => {
+  const handleUpdateCustomerId = (/** @type {any} */ customerId) => {
     if (!modalState.data?.user_id) return;
-    dispatch(updateCustomerId({ userId: modalState.data.user_id, customerId })).then((res) => {
+    const data = /** @type {any} */ (modalState.data);
+    dispatch(/** @type {any} */ (updateCustomerId({ userId: data.user_id, customerId }))).then((/** @type {any} */ res) => {
       if (!res.error) {
         closeModal();
       }
@@ -347,7 +356,7 @@ const CustomerPage = () => {
                 <Option value="unassigned">Unassigned</Option>
                 {blocks &&
                   blocks.length > 0 &&
-                  blocks.map((block) => {
+                  blocks.map((/** @type {any} */ block) => {
                     const optionValue = String(block.block_id);
                     return (
                       <Option key={block.block_id} value={optionValue}>
@@ -380,31 +389,31 @@ const CustomerPage = () => {
       <CustomerTable
         customers={filteredCustomers}
         loading={customerStatus === "loading"}
-        onView={(record) => openModal("view", record)}
-        onEdit={(record) => {
+        onView={(/** @type {any} */ record) => openModal("view", record)}
+        onEdit={(/** @type {any} */ record) => {
           const mode = record.room_id ? "roomChange" : "full";
           openModal("onboard", record, mode);
         }}
-        onDelete={(record) => openModal("delete", record)}
-        onChangeTariff={(record) => openModal("changeTariff", record)}
-        onChangeRoom={(record) => openModal("changeRoom", record)}
-        onRemoveFromRoom={(record) => openModal("removeFromRoom", record)}
-        onChangePassword={(record) => openModal("changePassword", record)}
-        onAdminUpdateProfile={(record) => openModal("updateProfile", record)}
-        onUpdateAdvance={(record) => {
+        onDelete={(/** @type {any} */ record) => openModal("delete", record)}
+        onChangeTariff={(/** @type {any} */ record) => openModal("changeTariff", record)}
+        onChangeRoom={(/** @type {any} */ record) => openModal("changeRoom", record)}
+        onRemoveFromRoom={(/** @type {any} */ record) => openModal("removeFromRoom", record)}
+        onChangePassword={(/** @type {any} */ record) => openModal("changePassword", record)}
+        onAdminUpdateProfile={(/** @type {any} */ record) => openModal("updateProfile", record)}
+        onUpdateAdvance={(/** @type {any} */ record) => {
           setSelectedCustomer(record);
           setAdvanceModalVisible(true);
         }}
         onActivate={handleActivateUser}
         onReject={handleRejectUser}
-        onReassign={(record) => {
+        onReassign={(/** @type {any} */ record) => {
           // Open onboard modal with full mode to reassign the user
           openModal("onboard", record, "full");
         }}
-        onVacateRoom={(record) => openModal("vacate", record)}
-        onCancelVacation={(record) => openModal("cancelVacation", record)}
+        onVacateRoom={(/** @type {any} */ record) => openModal("vacate", record)}
+        onCancelVacation={(/** @type {any} */ record) => openModal("cancelVacation", record)}
         onViewLogs={handleViewLogs}
-        onUpdateCustomerId={(record) => openModal("updateCustomerId", record)}
+        onUpdateCustomerId={(/** @type {any} */ record) => openModal("updateCustomerId", record)}
       />
 
       <SignupOnboardModal visible={modalState.type === "signup"} onCancel={closeModal} onSubmit={handleSignupSubmit} loading={isSignupLoading} error={null} />
@@ -417,6 +426,7 @@ const CustomerPage = () => {
         loading={isActionLoading}
         rooms={rooms}
         blocks={blocks}
+        error={null}
         mode={onboardMode}
       />
 
@@ -426,6 +436,7 @@ const CustomerPage = () => {
         onCancel={closeModal}
         onSubmit={handleChangeRoom}
         loading={isActionLoading}
+        error={null}
         rooms={rooms}
         blocks={blocks}
       />
@@ -442,14 +453,17 @@ const CustomerPage = () => {
           setAdvanceModalVisible(false);
           setSelectedCustomer(null);
         }}
-        onSubmit={(values) => {
+        onSubmit={(/** @type {any} */ values) => {
           const { amount } = values;
-          dispatch(updateAdvancePayment({ userId: selectedCustomer.user_id, data: { amount } })).then((res) => {
-            if (!res.error) {
-              setAdvanceModalVisible(false);
-              setSelectedCustomer(null);
-            }
-          });
+          if (selectedCustomer) {
+            const customer = /** @type {any} */ (selectedCustomer);
+            dispatch(/** @type {any} */ (updateAdvancePayment({ userId: customer.user_id, data: { amount } }))).then((/** @type {any} */ res) => {
+              if (!res.error) {
+                setAdvanceModalVisible(false);
+                setSelectedCustomer(null);
+              }
+            });
+          }
         }}
         customer={selectedCustomer}
         loading={customerStatus === "loading_action"}
@@ -467,7 +481,7 @@ const CustomerPage = () => {
         visible={modalState.type === "delete" || modalState.type === "removeFromRoom" || modalState.type === "cancelVacation"}
         onCancel={closeModal}
         onConfirm={handleConfirmDelete}
-        title={`Confirm Action: ${modalState.data?.name || "Customer"}`}
+        title={`Confirm Action: ${(/** @type {any} */ (modalState.data))?.name || "Customer"}`}
         content={
           modalState.type === "delete"
             ? "Are you sure you want to permanently delete this customer?"

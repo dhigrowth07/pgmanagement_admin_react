@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Loader2, AlertCircle, Home, ShieldAlert, IndianRupee, UserPlus, Plus, FileText, Calendar, LogOut, Clock } from "lucide-react";
+import { Loader2, AlertCircle, Home, ShieldAlert, IndianRupee, UserPlus, Plus, FileText, Calendar, LogOut, Clock, BedDouble } from "lucide-react";
 import { Users } from "lucide-react";
 
 import { fetchAllCustomers, fetchPendingUsers, selectAllCustomers, selectPendingUsers, selectCustomerStatus } from "../../redux/customer/customerSlice";
@@ -9,6 +9,7 @@ import { fetchAllIssues, selectAllIssues, selectIssueStatus } from "../../redux/
 import { fetchStatistics, selectPaymentStatistics, selectPaymentStatus } from "../../redux/payment/paymentSlice";
 import { selectUser } from "../../redux/auth/authSlice";
 import { fetchDashboardMetrics, selectDashboardMetrics, selectVacatingUsersCount, selectVacatingUsers, selectDashboardStatus, selectDashboardError } from "../../redux/dashboard/dashboardSlice";
+import { fetchBedSummary, selectBedSummary, selectBedStatus } from "../../redux/bed/bedSlice";
 
 const Card = React.forwardRef(({ className, ...props }, ref) => <div ref={ref} className={`rounded-lg border bg-white text-card-foreground shadow-sm ${className || ""}`} {...props} />);
 Card.displayName = "Card";
@@ -51,18 +52,23 @@ const DashboardContents = ({ onMenuChange }) => {
   const roomStatus = useSelector(selectRoomStatus);
   const issueStatus = useSelector(selectIssueStatus);
   const paymentStatus = useSelector(selectPaymentStatus);
+  const bedSummary = useSelector(selectBedSummary);
+  const bedStatus = useSelector(selectBedStatus);
 
   useEffect(() => {
     // Fetch dashboard metrics from API
     dispatch(fetchDashboardMetrics());
 
+    // Fetch bed availability summary
+    dispatch(/** @type {any} */ (fetchBedSummary()));
+
     // Keep existing fetches for backward compatibility
-    dispatch(fetchAllCustomers());
-    dispatch(fetchPendingUsers());
-    dispatch(fetchRoomsData());
-    dispatch(fetchAllIssues());
+    dispatch(/** @type {any} */ (fetchAllCustomers()));
+    dispatch(/** @type {any} */ (fetchPendingUsers()));
+    dispatch(/** @type {any} */ (fetchRoomsData()));
+    dispatch(/** @type {any} */ (fetchAllIssues()));
     if (isPaymentEnabled) {
-      dispatch(fetchStatistics());
+      dispatch(/** @type {any} */ (fetchStatistics()));
     }
   }, [dispatch, isPaymentEnabled]);
 
@@ -70,7 +76,7 @@ const DashboardContents = ({ onMenuChange }) => {
     // Use API metrics if available, otherwise fall back to calculated stats
     if (dashboardMetrics && dashboardMetrics.length > 0) {
       const metricsMap = {};
-      dashboardMetrics.forEach((metric) => {
+      dashboardMetrics.forEach((/** @type {any} */ metric) => {
         metricsMap[metric.label] = metric.value;
       });
       return {
@@ -79,27 +85,29 @@ const DashboardContents = ({ onMenuChange }) => {
         unresolvedIssues: metricsMap["Unresolved Issues"] || "0",
         totalCollected: isPaymentEnabled ? metricsMap["Total Collected"] || "₹0" : "₹0",
         vacatingUsers: metricsMap["Vacating Users"] || "0",
+        availableBeds: metricsMap["Available Beds"] || "0",
       };
     }
 
     // Fallback to calculated stats
     return {
       totalCustomers:
-        customers?.filter((c) => {
+        customers?.filter((/** @type {any} */ c) => {
           const hasRoom = !!c.room_id;
           const isActive = c.is_active === true;
           const hasNotVacated = !c.vacated_date;
           return hasRoom && isActive && hasNotVacated;
         }).length || 0,
-      occupiedRooms: rooms?.filter((r) => r.current_occupancy === r.capacity).length || 0,
-      unresolvedIssues: issues?.filter((i) => i.status === "unresolved").length || 0,
+      occupiedRooms: rooms?.filter((/** @type {any} */ r) => r.current_occupancy === r.capacity).length || 0,
+      unresolvedIssues: issues?.filter((/** @type {any} */ i) => i.status === "unresolved").length || 0,
       totalCollected: isPaymentEnabled ? paymentStats?.total_collected || 0 : 0,
       vacatingUsers: vacatingUsersCount || 0,
+      availableBeds: bedSummary?.available_beds || 0,
     };
-  }, [dashboardMetrics, customers, rooms, issues, paymentStats, isPaymentEnabled, vacatingUsersCount]);
+  }, [dashboardMetrics, customers, rooms, issues, paymentStats, isPaymentEnabled, vacatingUsersCount, bedSummary]);
 
-  const isLoading = [customerStatus, roomStatus, issueStatus, dashboardStatus, ...(isPaymentEnabled ? [paymentStatus] : [])].includes("loading");
-  const anyError = [customerStatus, roomStatus, issueStatus, dashboardStatus, ...(isPaymentEnabled ? [paymentStatus] : [])].includes("failed") || dashboardError;
+  const isLoading = [customerStatus, roomStatus, issueStatus, dashboardStatus, bedStatus, ...(isPaymentEnabled ? [paymentStatus] : [])].includes("loading");
+  const anyError = [customerStatus, roomStatus, issueStatus, dashboardStatus, bedStatus, ...(isPaymentEnabled ? [paymentStatus] : [])].includes("failed") || dashboardError;
 
   const dashboardItems = [
     {
@@ -110,9 +118,9 @@ const DashboardContents = ({ onMenuChange }) => {
       iconColor: "bg-blue-500",
     },
     {
-      title: "Fully Occupied Rooms",
-      value: typeof stats.occupiedRooms === "string" ? stats.occupiedRooms : stats.occupiedRooms.toLocaleString(),
-      icon: Home,
+      title: "Available Beds",
+      value: typeof stats.availableBeds === "string" ? stats.availableBeds : stats.availableBeds.toLocaleString(),
+      icon: BedDouble,
       menuKey: "rooms",
       iconColor: "bg-green-500",
     },
@@ -123,13 +131,6 @@ const DashboardContents = ({ onMenuChange }) => {
       menuKey: "issues",
       iconColor: "bg-red-500",
     },
-    // {
-    //   title: "Vacating Users",
-    //   value: typeof stats.vacatingUsers === "string" ? stats.vacatingUsers : stats.vacatingUsers.toLocaleString(),
-    //   icon: LogOut,
-    //   menuKey: null,
-    //   iconColor: "bg-orange-500",
-    // },
     ...(isPaymentEnabled
       ? [
           {

@@ -1,8 +1,26 @@
-import React, { useEffect, useMemo } from "react";
-import { Modal, Form, Select, Button, Alert } from "antd";
+import React, { useEffect, useMemo, useState } from "react";
+import { Modal, Form, Select, Button, Alert, message } from "antd";
+import { getAvailableBeds } from "../../../../services/bedService";
 
+const { Option } = Select;
+
+/**
+ * @param {object} props
+ * @param {boolean} props.visible
+ * @param {() => void} props.onCancel
+ * @param {any} [props.customer]
+ * @param {(data: any) => void} props.onSubmit
+ * @param {boolean} props.loading
+ * @param {string | null} props.error
+ * @param {any[]} props.rooms
+ * @param {any[]} props.blocks
+ */
 const ChangeRoomModal = ({ visible, onCancel, customer, onSubmit, loading, error, rooms, blocks }) => {
   const [form] = Form.useForm();
+  const [availableBeds, setAvailableBeds] = useState([]);
+  const [loadingBeds, setLoadingBeds] = useState(false);
+  /** @type {[string | null, Function]} */
+  const [selectedRoomId, setSelectedRoomId] = useState(null);
 
   // Only show rooms with available beds (current_occupancy < capacity)
   // Exclude the room the user is currently in
@@ -75,12 +93,45 @@ const ChangeRoomModal = ({ visible, onCancel, customer, onSubmit, loading, error
     if (visible) {
       // Reset form when modal opens
       form.resetFields();
+      setSelectedRoomId(null);
+      setAvailableBeds([]);
     }
   }, [visible, form]);
 
+  useEffect(() => {
+    if (selectedRoomId) {
+      const fetchBeds = async () => {
+        setLoadingBeds(true);
+        try {
+          const response = await getAvailableBeds(selectedRoomId);
+          setAvailableBeds(response.data?.data || []);
+        } catch (error) {
+          console.error("Error fetching available beds:", error);
+          message.error("Failed to load available beds");
+        } finally {
+          setLoadingBeds(false);
+        }
+      };
+      fetchBeds();
+    } else {
+      setAvailableBeds([]);
+    }
+  }, [selectedRoomId]);
+
+  /** @param {string} value */
+  const handleRoomChange = (value) => {
+    setSelectedRoomId(value);
+    form.setFieldsValue({ bed_id: null });
+  };
+
+  /** @param {any} values */
   const handleFinish = (values) => {
     if (values.room_id && customer?.user_id) {
-      onSubmit({ userId: customer.user_id, roomId: values.room_id });
+      onSubmit({ 
+        userId: customer.user_id, 
+        roomId: values.room_id, 
+        bedId: values.bed_id 
+      });
     }
   };
 
@@ -98,7 +149,17 @@ const ChangeRoomModal = ({ visible, onCancel, customer, onSubmit, loading, error
         {error && <Alert message={error} type="error" showIcon closable className="mb-4" />}
 
         <Form.Item name="room_id" label="Select New Room" rules={[{ required: true, message: "Please select a room" }]}>
-          <Select placeholder="Select a room" options={groupedRooms} showSearch optionFilterProp="label" />
+          <Select placeholder="Select a room" options={groupedRooms} showSearch optionFilterProp="label" onChange={handleRoomChange} />
+        </Form.Item>
+
+        <Form.Item name="bed_id" label="Select Bed" rules={[{ required: true, message: "Please select a bed" }]}>
+          <Select placeholder="Select a bed" loading={loadingBeds} disabled={!selectedRoomId}>
+            {availableBeds.map((/** @type {any} */ bed) => (
+              <Option key={bed.bed_id} value={bed.bed_id}>
+                {bed.bed_code} ({bed.bed_status})
+              </Option>
+            ))}
+          </Select>
         </Form.Item>
 
         {customer?.room_id && (

@@ -239,6 +239,29 @@ const CustomerTable = ({
       },
     },
     {
+      title: "Bed",
+      dataIndex: "bed_code",
+      key: "bed",
+      render: (bedCode, record) =>
+        bedCode ? (
+          <Space direction="vertical" size={0}>
+            <Tag color="cyan" style={{ fontSize: "13px", padding: "4px 12px", fontWeight: 500 }}>
+              {bedCode}
+            </Tag>
+            <span style={{ fontSize: "10px", color: "#8c8c8c", marginLeft: "4px" }}>
+              ID: {record.bed_id}
+            </span>
+          </Space>
+        ) : (
+          <Tag color="default">Unassigned</Tag>
+        ),
+      sorter: (a, b) => {
+        const bedA = a.bed_code || "";
+        const bedB = b.bed_code || "";
+        return bedA.localeCompare(bedB);
+      },
+    },
+    {
       title: "Tariff",
       dataIndex: "tariff_name",
       key: "tariff",

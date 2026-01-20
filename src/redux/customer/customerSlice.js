@@ -11,10 +11,11 @@ const initialState = {
   pendingUsers: [],
   status: "idle",
   error: null,
+  /** @type {any} */
   bulkImportResult: null,
 };
 
-export const fetchAllCustomers = createAsyncThunk("customer/fetchAll", async (_, { rejectWithValue }) => {
+export const fetchAllCustomers = createAsyncThunk("customer/fetchAll", async (/** @type {any} */ _, { rejectWithValue }) => {
   try {
     const response = await customerService.getAllCustomers();
     // Ensure we return an array even if the API returns undefined
@@ -24,7 +25,7 @@ export const fetchAllCustomers = createAsyncThunk("customer/fetchAll", async (_,
   }
 });
 
-export const fetchPendingUsers = createAsyncThunk("customer/fetchPending", async (_, { rejectWithValue }) => {
+export const fetchPendingUsers = createAsyncThunk("customer/fetchPending", async (/** @type {any} */ _, { rejectWithValue }) => {
   try {
     const response = await customerService.getPendingUsers();
     // Ensure we return an array even if the API returns undefined
@@ -34,7 +35,7 @@ export const fetchPendingUsers = createAsyncThunk("customer/fetchPending", async
   }
 });
 
-export const addNewCustomer = createAsyncThunk("customer/addNew", async (customerData, { dispatch, rejectWithValue }) => {
+export const addNewCustomer = createAsyncThunk("customer/addNew", async (/** @type {any} */ customerData, { dispatch, rejectWithValue }) => {
   try {
     const response = await customerService.createCustomer(customerData);
     const customerId = response.data?.data?.user?.customer_id;
@@ -42,7 +43,7 @@ export const addNewCustomer = createAsyncThunk("customer/addNew", async (custome
       ? `${response.data.msg || "Customer created successfully!"} Customer ID: ${customerId}`
       : response.data.msg || "Customer created successfully!";
     toast.success(successMessage);
-    dispatch(fetchAllCustomers());
+    dispatch(fetchAllCustomers(null));
     return response.data.data.user;
   } catch (error) {
     const errorData = handleApiError(error);
@@ -51,11 +52,11 @@ export const addNewCustomer = createAsyncThunk("customer/addNew", async (custome
   }
 });
 
-export const updateCustomer = createAsyncThunk("customer/update", async ({ userId, customerData }, { dispatch, rejectWithValue }) => {
+export const updateCustomer = createAsyncThunk("customer/update", async (/** @type {any} */ { userId, customerData }, { dispatch, rejectWithValue }) => {
   try {
     const response = await customerService.updateCustomer({ userId, customerData });
     toast.success(response.data.msg || "Customer updated successfully!");
-    dispatch(fetchAllCustomers());
+    dispatch(fetchAllCustomers(null));
     return response.data.data;
   } catch (error) {
     const errorData = handleApiError(error);
@@ -64,11 +65,11 @@ export const updateCustomer = createAsyncThunk("customer/update", async ({ userI
   }
 });
 
-export const deleteCustomer = createAsyncThunk("customer/delete", async (userId, { dispatch, rejectWithValue }) => {
+export const deleteCustomer = createAsyncThunk("customer/delete", async (/** @type {string} */ userId, { dispatch, rejectWithValue }) => {
   try {
     const response = await customerService.deleteCustomer(userId);
     toast.success(response.data.msg || "Customer deleted successfully!");
-    dispatch(fetchAllCustomers());
+    dispatch(fetchAllCustomers(null));
     return userId;
   } catch (error) {
     const errorData = handleApiError(error);
@@ -77,11 +78,11 @@ export const deleteCustomer = createAsyncThunk("customer/delete", async (userId,
   }
 });
 
-export const updateUserTariff = createAsyncThunk("customer/updateTariff", async ({ userId, tariffId }, { dispatch, rejectWithValue }) => {
+export const updateUserTariff = createAsyncThunk("customer/updateTariff", async (/** @type {any} */ { userId, tariffId }, { dispatch, rejectWithValue }) => {
   try {
     const response = await customerService.updateUserTariff(userId, tariffId);
     toast.success(response.data.msg || "Tariff updated successfully!");
-    dispatch(fetchAllCustomers());
+    dispatch(fetchAllCustomers(null));
     return response.data.data;
   } catch (error) {
     const errorData = handleApiError(error);
@@ -90,11 +91,11 @@ export const updateUserTariff = createAsyncThunk("customer/updateTariff", async 
   }
 });
 
-export const removeUserFromRoom = createAsyncThunk("customer/removeFromRoom", async (userId, { dispatch, rejectWithValue }) => {
+export const removeUserFromRoom = createAsyncThunk("customer/removeFromRoom", async (/** @type {string} */ userId, { dispatch, rejectWithValue }) => {
   try {
     const response = await customerService.removeUserFromRoom(userId);
     toast.success(response.data.msg || "User removed from room.");
-    dispatch(fetchAllCustomers());
+    dispatch(fetchAllCustomers(null));
     return response.data.data;
   } catch (error) {
     const errorData = handleApiError(error);
@@ -103,11 +104,11 @@ export const removeUserFromRoom = createAsyncThunk("customer/removeFromRoom", as
   }
 });
 
-export const changeRoomCustomer = createAsyncThunk("customer/changeRoom", async ({ userId, roomId }, { dispatch, rejectWithValue }) => {
+export const changeRoomCustomer = createAsyncThunk("customer/changeRoom", async (/** @type {any} */ { userId, roomId, bedId }, { dispatch, rejectWithValue }) => {
   try {
-    const response = await customerService.changeRoomCustomer(userId, roomId);
+    const response = await customerService.changeRoomCustomer(userId, roomId, bedId);
     toast.success(response.data.msg || "Room changed successfully!");
-    dispatch(fetchAllCustomers());
+    dispatch(fetchAllCustomers(null));
     return response.data.data;
   } catch (error) {
     const errorData = handleApiError(error);
@@ -116,11 +117,11 @@ export const changeRoomCustomer = createAsyncThunk("customer/changeRoom", async 
   }
 });
 
-export const vacateUserRoom = createAsyncThunk("customer/vacateRoom", async ({ userId, vacatingDate = null }, { dispatch, rejectWithValue }) => {
+export const vacateUserRoom = createAsyncThunk("customer/vacateRoom", async (/** @type {any} */ { userId, vacatingDate = null }, { dispatch, rejectWithValue }) => {
   try {
     const response = await customerService.vacateUserRoom(userId, vacatingDate);
     toast.success(response.data.msg || "User scheduled to vacate successfully.");
-    dispatch(fetchAllCustomers());
+    dispatch(fetchAllCustomers(null));
     return response.data.data;
   } catch (error) {
     const errorData = handleApiError(error);
@@ -129,11 +130,11 @@ export const vacateUserRoom = createAsyncThunk("customer/vacateRoom", async ({ u
   }
 });
 
-export const cancelVacation = createAsyncThunk("customer/cancelVacation", async (userId, { dispatch, rejectWithValue }) => {
+export const cancelVacation = createAsyncThunk("customer/cancelVacation", async (/** @type {string} */ userId, { dispatch, rejectWithValue }) => {
   try {
     const response = await customerService.cancelVacation(userId);
     toast.success(response.data.msg || "Vacation cancelled successfully.");
-    dispatch(fetchAllCustomers());
+    dispatch(fetchAllCustomers(undefined));
     return response.data.data;
   } catch (error) {
     const errorData = handleApiError(error);
@@ -142,7 +143,7 @@ export const cancelVacation = createAsyncThunk("customer/cancelVacation", async 
   }
 });
 
-export const changeCustomerPassword = createAsyncThunk("customer/changePassword", async ({ userId, newPassword }, { rejectWithValue }) => {
+export const changeCustomerPassword = createAsyncThunk("customer/changePassword", async (/** @type {any} */ { userId, newPassword }, { rejectWithValue }) => {
   try {
     const response = await customerService.changePasswordForCustomer(userId, newPassword);
     toast.success(response.data.msg || "Password updated successfully!");
@@ -154,13 +155,13 @@ export const changeCustomerPassword = createAsyncThunk("customer/changePassword"
   }
 });
 
-export const bulkImportCustomers = createAsyncThunk("customer/bulkImport", async (users, { dispatch, rejectWithValue }) => {
+export const bulkImportCustomers = createAsyncThunk("customer/bulkImport", async (/** @type {any[]} */ users, { dispatch, rejectWithValue }) => {
   try {
     const response = await customerService.bulkImportUsers(users);
     const { successful, failed } = response.data;
     toast.success(`Import complete: ${successful.length} succeeded, ${failed.length} failed.`);
     if (successful.length > 0) {
-      dispatch(fetchAllCustomers());
+      dispatch(fetchAllCustomers(null));
     }
     return response.data;
   } catch (error) {
@@ -170,7 +171,7 @@ export const bulkImportCustomers = createAsyncThunk("customer/bulkImport", async
   }
 });
 
-export const adminUpdateCustomerProfileThunk = createAsyncThunk("customers/adminUpdateCustomerProfile", async ({ userId, formData }, { dispatch, rejectWithValue }) => {
+export const adminUpdateCustomerProfileThunk = createAsyncThunk("customers/adminUpdateCustomerProfile", async (/** @type {any} */ { userId, formData }, { dispatch, rejectWithValue }) => {
   try {
     // Use api instance (already imported) to ensure auth token and headers are added via interceptor
     const response = await api.put(`/api/v1/users/${userId}/update-profile`, formData, {
@@ -179,19 +180,19 @@ export const adminUpdateCustomerProfileThunk = createAsyncThunk("customers/admin
       },
     });
 
-    dispatch(fetchAllCustomers());
+    dispatch(fetchAllCustomers(undefined));
 
     return response.data;
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     return rejectWithValue(err.response?.data || err.message);
   }
 });
 
-export const collectAdvancePayment = createAsyncThunk("customer/collectAdvance", async ({ userId, amount }, { dispatch, rejectWithValue }) => {
+export const collectAdvancePayment = createAsyncThunk("customer/collectAdvance", async (/** @type {any} */ { userId, amount }, { dispatch, rejectWithValue }) => {
   try {
     const response = await customerService.collectAdvancePayment(userId, { amount });
     toast.success(response.data.msg || "Advance collected successfully!");
-    dispatch(fetchAllCustomers());
+    dispatch(fetchAllCustomers(undefined));
     return response.data.data;
   } catch (error) {
     const errorData = handleApiError(error);
@@ -200,11 +201,11 @@ export const collectAdvancePayment = createAsyncThunk("customer/collectAdvance",
   }
 });
 
-export const updateAdvancePayment = createAsyncThunk("customer/updateAdvance", async ({ userId, data }, { dispatch, rejectWithValue }) => {
+export const updateAdvancePayment = createAsyncThunk("customer/updateAdvance", async (/** @type {any} */ { userId, data }, { dispatch, rejectWithValue }) => {
   try {
     const response = await customerService.updateAdvancePayment(userId, data);
     toast.success(response.data.msg || "Advance updated successfully!");
-    dispatch(fetchAllCustomers());
+    dispatch(fetchAllCustomers(undefined));
     return response.data.data;
   } catch (error) {
     const errorData = handleApiError(error);
@@ -213,7 +214,7 @@ export const updateAdvancePayment = createAsyncThunk("customer/updateAdvance", a
   }
 });
 
-export const getAdvancePayment = createAsyncThunk("customer/getAdvance", async (userId, { rejectWithValue }) => {
+export const getAdvancePayment = createAsyncThunk("customer/getAdvance", async (/** @type {string} */ userId, { rejectWithValue }) => {
   try {
     const response = await customerService.getAdvancePayment(userId);
     console.log("response: ", response);
@@ -225,11 +226,11 @@ export const getAdvancePayment = createAsyncThunk("customer/getAdvance", async (
   }
 });
 
-export const uploadProfileImage = createAsyncThunk("customer/uploadProfileImage", async ({ userId, file }, { dispatch, rejectWithValue }) => {
+export const uploadProfileImage = createAsyncThunk("customer/uploadProfileImage", async (/** @type {any} */ { userId, file }, { dispatch, rejectWithValue }) => {
   try {
     const response = await customerService.uploadUserProfileImage(userId, file);
     toast.success(response.data.msg || "Profile image uploaded successfully!");
-    dispatch(fetchAllCustomers());
+    dispatch(fetchAllCustomers(undefined));
     return response.data.data;
   } catch (error) {
     const errorData = handleApiError(error);
@@ -238,11 +239,11 @@ export const uploadProfileImage = createAsyncThunk("customer/uploadProfileImage"
   }
 });
 
-export const deleteProfileImage = createAsyncThunk("customer/deleteProfileImage", async (userId, { dispatch, rejectWithValue }) => {
+export const deleteProfileImage = createAsyncThunk("customer/deleteProfileImage", async (/** @type {string} */ userId, { dispatch, rejectWithValue }) => {
   try {
     const response = await customerService.deleteUserProfileImage(userId);
     toast.success(response.data.msg || "Profile image deleted successfully!");
-    dispatch(fetchAllCustomers());
+    dispatch(fetchAllCustomers(undefined));
     return response.data.data;
   } catch (error) {
     const errorData = handleApiError(error);
@@ -251,11 +252,11 @@ export const deleteProfileImage = createAsyncThunk("customer/deleteProfileImage"
   }
 });
 
-export const activateCustomer = createAsyncThunk("customer/activate", async (userId, { dispatch, rejectWithValue }) => {
+export const activateCustomer = createAsyncThunk("customer/activate", async (/** @type {string} */ userId, { dispatch, rejectWithValue }) => {
   try {
     const response = await customerService.activateUser(userId);
     toast.success(response.data.msg || "User activated successfully!");
-    dispatch(fetchAllCustomers());
+    dispatch(fetchAllCustomers(undefined));
     return response.data.data;
   } catch (error) {
     const errorData = handleApiError(error);
@@ -264,11 +265,11 @@ export const activateCustomer = createAsyncThunk("customer/activate", async (use
   }
 });
 
-export const rejectCustomer = createAsyncThunk("customer/reject", async (userId, { dispatch, rejectWithValue }) => {
+export const rejectCustomer = createAsyncThunk("customer/reject", async (/** @type {string} */ userId, { dispatch, rejectWithValue }) => {
   try {
     const response = await customerService.rejectUser(userId);
     toast.success(response.data.msg || "User registration rejected successfully!");
-    dispatch(fetchAllCustomers());
+    dispatch(fetchAllCustomers(undefined));
     return response.data.data;
   } catch (error) {
     const errorData = handleApiError(error);
@@ -277,7 +278,7 @@ export const rejectCustomer = createAsyncThunk("customer/reject", async (userId,
   }
 });
 
-export const updateCustomerId = createAsyncThunk("customer/updateCustomerId", async ({ userId, customerId }, { dispatch, rejectWithValue }) => {
+export const updateCustomerId = createAsyncThunk("customer/updateCustomerId", async (/** @type {any} */ { userId, customerId }, { dispatch, rejectWithValue }) => {
   try {
     const response = await customerService.updateCustomerId(userId, customerId);
     toast.success(response.data.msg || "Customer ID updated successfully!");
@@ -310,7 +311,7 @@ const customerSlice = createSlice({
       })
       .addCase(fetchAllCustomers.rejected, (state, action) => {
         state.status = "failed";
-        state.error = action.payload.msg;
+        state.error = (/** @type {any} */ (action.payload)).msg;
       })
       .addCase(fetchPendingUsers.pending, (state) => {
         state.status = "loading";
@@ -322,7 +323,7 @@ const customerSlice = createSlice({
       })
       .addCase(fetchPendingUsers.rejected, (state, action) => {
         state.status = "failed";
-        state.error = action.payload?.msg;
+        state.error = (/** @type {any} */ (action.payload))?.msg;
       })
       .addCase(bulkImportCustomers.pending, (state) => {
         state.status = "loading_action";
@@ -334,7 +335,7 @@ const customerSlice = createSlice({
       })
       .addCase(bulkImportCustomers.rejected, (state, action) => {
         state.status = "failed";
-        state.error = action.payload?.msg;
+        state.error = (/** @type {any} */ (action.payload))?.msg;
         state.bulkImportResult = { successful: [], failed: [] };
       })
       .addCase(adminUpdateCustomerProfileThunk.pending, (state) => {
@@ -347,7 +348,7 @@ const customerSlice = createSlice({
       })
       .addCase(adminUpdateCustomerProfileThunk.rejected, (state, action) => {
         state.status = "failed";
-        state.error = action.payload?.msg || action.payload?.message || "Failed to update profile";
+        state.error = (/** @type {any} */ (action.payload))?.msg || (/** @type {any} */ (action.payload))?.message || "Failed to update profile";
       })
 
       .addMatcher(
@@ -361,7 +362,7 @@ const customerSlice = createSlice({
         (action) => action.type.startsWith("customer/") && action.type.endsWith("/rejected") && !action.type.includes("fetchAll") && !action.type.includes("bulkImport"),
         (state, action) => {
           state.status = "failed";
-          state.error = action.payload?.msg;
+          state.error = (/** @type {any} */ (action.payload))?.msg;
         }
       )
       .addMatcher(
@@ -374,9 +375,9 @@ const customerSlice = createSlice({
 });
 
 export const { clearBulkImportResult } = customerSlice.actions;
-export const selectAllCustomers = (state) => state.customer.customers;
-export const selectPendingUsers = (state) => state.customer.pendingUsers;
-export const selectCustomerStatus = (state) => state.customer.status;
-export const selectCustomerError = (state) => state.customer.error;
-export const selectBulkImportResult = (state) => state.customer.bulkImportResult;
+export const selectAllCustomers = (/** @type {any} */ state) => state.customer.customers;
+export const selectPendingUsers = (/** @type {any} */ state) => state.customer.pendingUsers;
+export const selectCustomerStatus = (/** @type {any} */ state) => state.customer.status;
+export const selectCustomerError = (/** @type {any} */ state) => state.customer.error;
+export const selectBulkImportResult = (/** @type {any} */ state) => state.customer.bulkImportResult;
 export default customerSlice.reducer;

@@ -82,8 +82,8 @@ export const rejectUser = (userId) => {
   return api.put(`/api/v1/users/${userId}/reject`);
 };
 
-export const changeRoomCustomer = (userId, roomId) => {
-  return api.put(`/api/v1/users/${userId}/change-room`, { room_id: roomId });
+export const changeRoomCustomer = (userId, roomId, bedId) => {
+  return api.put(`/api/v1/users/${userId}/change-room`, { room_id: roomId, bed_id: bedId });
 };
 
 export const vacateUserRoom = (userId, vacatingDate = null) => {

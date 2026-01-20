@@ -7,16 +7,18 @@ import dayjs from "dayjs";
  * @param {string} html - HTML string
  * @returns {string} - Formatted plain text string with proper line breaks
  */
-const htmlToPlainText = (html) => {
+const htmlToPlainText = (/** @type {string} */ html) => {
   if (!html) return "";
 
   // Create a temporary DOM element to parse HTML
   const tempDiv = document.createElement("div");
   tempDiv.innerHTML = html;
 
+  /** @type {string[]} */
   const result = [];
 
   // Function to extract text from a node
+  /** @param {any} node @returns {string} */
   const getTextContent = (node) => {
     if (node.nodeType === Node.TEXT_NODE) {
       return node.textContent || "";
@@ -31,10 +33,11 @@ const htmlToPlainText = (html) => {
   };
 
   // Process all child nodes of the container
+  /** @param {any} element @param {boolean} [skipListItems] */
   const processElement = (element, skipListItems = false) => {
     if (!element) return;
 
-    Array.from(element.childNodes).forEach((node) => {
+    Array.from(element.childNodes).forEach((/** @type {any} */ node) => {
       if (node.nodeType === Node.TEXT_NODE) {
         const text = node.textContent.trim();
         if (text) {
@@ -126,7 +129,7 @@ const htmlToPlainText = (html) => {
  * @param {string} [options.signature] - Base64 data URL of signature image
  * @returns {Object} - Object containing doc, file, fileName, and blob
  */
-export const generateCustomerPDF = (customerData, options = {}) => {
+export const generateCustomerPDF = (/** @type {any} */ customerData, options = {}) => {
   try {
     const { autoDownload = false, tenantName, termsAndConditions, signature } = options;
     const doc = new jsPDF();
@@ -137,7 +140,7 @@ export const generateCustomerPDF = (customerData, options = {}) => {
     let yPosition = margin;
 
     // Helper function to add a new page if needed
-    const checkPageBreak = (requiredSpace = 20) => {
+    const checkPageBreak = (/** @type {number} */ requiredSpace = 20) => {
       if (yPosition + requiredSpace > pageHeight - margin) {
         doc.addPage();
         yPosition = margin;
@@ -147,7 +150,7 @@ export const generateCustomerPDF = (customerData, options = {}) => {
     };
 
     // Helper function to add a section title
-    const addSectionTitle = (title, fontSize = 14) => {
+    const addSectionTitle = (/** @type {string} */ title, /** @type {number} */ fontSize = 14) => {
       checkPageBreak(15);
       yPosition += 2; // Reduced spacing before section
       doc.setFontSize(fontSize);
@@ -157,7 +160,7 @@ export const generateCustomerPDF = (customerData, options = {}) => {
     };
 
     // Helper function to add a label-value pair
-    const addField = (label, value, isBold = false) => {
+    const addField = (/** @type {string} */ label, /** @type {any} */ value, /** @type {boolean} */ isBold = false) => {
       checkPageBreak(8);
       doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
@@ -173,7 +176,7 @@ export const generateCustomerPDF = (customerData, options = {}) => {
     };
 
     // Helper function to render structured terms and conditions
-    const renderTermsAndConditions = (text) => {
+    const renderTermsAndConditions = (/** @type {string} */ text) => {
       if (!text || text.trim() === "") return;
 
       const lines = text.split("\n");
@@ -210,7 +213,7 @@ export const generateCustomerPDF = (customerData, options = {}) => {
 
           // Split heading if too long
           const headingLines = doc.splitTextToSize(headingText, maxWidth);
-          headingLines.forEach((headingLine) => {
+          headingLines.forEach((/** @type {string} */ headingLine) => {
             checkPageBreak(headingLineHeight + 2);
             doc.text(headingLine, margin, yPosition);
             yPosition += headingLineHeight;
@@ -230,7 +233,7 @@ export const generateCustomerPDF = (customerData, options = {}) => {
             // List item - indent slightly
             const indent = 5;
             const textLines = doc.splitTextToSize(line, maxWidth - indent);
-            textLines.forEach((textLine) => {
+            textLines.forEach((/** @type {string} */ textLine) => {
               checkPageBreak(normalLineHeight + 2);
               doc.text(textLine, margin + indent, yPosition);
               yPosition += normalLineHeight;
@@ -238,7 +241,7 @@ export const generateCustomerPDF = (customerData, options = {}) => {
           } else {
             // Regular paragraph text
             const textLines = doc.splitTextToSize(line, maxWidth);
-            textLines.forEach((textLine) => {
+            textLines.forEach((/** @type {string} */ textLine) => {
               checkPageBreak(normalLineHeight + 2);
               doc.text(textLine, margin, yPosition);
               yPosition += normalLineHeight;
@@ -332,6 +335,9 @@ export const generateCustomerPDF = (customerData, options = {}) => {
 
     doc.setFontSize(10);
     addField("Room Number", customerData.room_number);
+    if (customerData.bed_code) {
+      addField("Bed Code", customerData.bed_code);
+    }
 
     // Advance Amount (formatted as currency with proper INR formatting)
     // Using "INR" text for better PDF compatibility (₹ symbol may not render correctly in jsPDF)
@@ -478,7 +484,7 @@ export const generateCustomerPDF = (customerData, options = {}) => {
       fileName,
       blob: pdfBlob,
     };
-  } catch (error) {
+  } catch (/** @type {any} */ error) {
     console.error("[PDF Generator] Error generating PDF:", error);
     console.error("[PDF Generator] Error stack:", error.stack);
     console.error("[PDF Generator] Customer data:", customerData);

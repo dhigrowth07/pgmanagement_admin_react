@@ -1,7 +1,16 @@
 import React from "react";
 import { Modal } from "antd";
 
-const DeleteConfirmModal = ({ visible, onCancel, onConfirm, title, content }) => {
+/**
+ * @param {object} props
+ * @param {boolean} props.visible
+ * @param {() => void} props.onCancel
+ * @param {() => void} props.onConfirm
+ * @param {string} [props.title]
+ * @param {string} [props.content]
+ * @param {string} [props.okText]
+ */
+const DeleteConfirmModal = ({ visible, onCancel, onConfirm, title, content, okText = "Delete" }) => {
   return (
     <Modal
       centered

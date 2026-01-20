@@ -10,11 +10,22 @@ import { selectUser } from "../../../../redux/auth/authSlice";
 import { getTermsAndConditions } from "../../../../services/tenantAdminsService";
 import { resizeSignatureImage, imageToDataURL } from "../../../../utils/imageResizer";
 import api from "../../../../services/api";
+import { getAvailableBeds } from "../../../../services/bedService";
 
 const { Option } = Select;
 const { Text, Title, Paragraph } = Typography;
 const { TextArea } = Input;
+/** @type {any} */
+const AntDatePicker = DatePicker;
 
+/**
+ * @param {object} props
+ * @param {boolean} props.visible
+ * @param {() => void} props.onCancel
+ * @param {(formData: FormData, customerData: any, pdfResult: any) => void} props.onSubmit
+ * @param {boolean} props.loading
+ * @param {string | null} props.error
+ */
 const SignupOnboardModal = ({ visible, onCancel, onSubmit, loading, error }) => {
   const [form] = Form.useForm();
   const [profileImageFileList, setProfileImageFileList] = useState([]);
@@ -26,6 +37,10 @@ const SignupOnboardModal = ({ visible, onCancel, onSubmit, loading, error }) => 
   const [loadingTerms, setLoadingTerms] = useState(false);
   /** @type {[Array<any>, Function]} */
   const [customFields, setCustomFields] = useState([]);
+  /** @type {[Array<any>, Function]} */
+  const [availableBeds, setAvailableBeds] = useState([]);
+  const [loadingBeds, setLoadingBeds] = useState(false);
+  const [selectedRoomId, setSelectedRoomId] = useState(null);
   const rooms = useSelector(selectAllRooms);
   const blocks = useSelector(selectAllBlocks);
   const user = useSelector(selectUser);
@@ -38,9 +53,10 @@ const SignupOnboardModal = ({ visible, onCancel, onSubmit, loading, error }) => 
       setProfileImageFileList([]);
       setIdProofFileList([]);
       setProfileImagePreview(null);
-      setSignatureFileList([]);
       setSignaturePreview(null);
       setTermsAndConditions(null);
+      setAvailableBeds([]);
+      setSelectedRoomId(null);
 
       // Fetch rooms data
       dispatch(fetchRoomsData());
@@ -97,6 +113,37 @@ const SignupOnboardModal = ({ visible, onCancel, onSubmit, loading, error }) => 
     }
   }, [visible, form, dispatch, user]);
 
+  useEffect(() => {
+    if (selectedRoomId) {
+      const fetchBeds = async () => {
+        setLoadingBeds(true);
+        try {
+          const response = await getAvailableBeds(selectedRoomId);
+          setAvailableBeds(response.data?.data || []);
+        } catch (error) {
+          console.error("Error fetching available beds:", error);
+          message.error("Failed to load available beds");
+        } finally {
+          setLoadingBeds(false);
+        }
+      };
+      fetchBeds();
+    } else {
+      setAvailableBeds([]);
+    }
+  }, [selectedRoomId]);
+
+  const handleRoomChange = (/** @type {string} */ value) => {
+    // Find room_id from room_number
+    const selectedRoom = (rooms || []).find((/** @type {any} */ r) => r.room_number === value);
+    if (selectedRoom) {
+      setSelectedRoomId(selectedRoom.room_id);
+    } else {
+      setSelectedRoomId(null);
+    }
+    form.setFieldsValue({ bed_id: null });
+  };
+
   const handleFinish = async (values) => {
     // Validate ID proofs before submission
     if (idProofFileList.length === 0) {
@@ -129,6 +176,9 @@ const SignupOnboardModal = ({ visible, onCancel, onSubmit, loading, error }) => 
 
     // Required: Room Number
     formData.append("room_number", values.room_number?.trim() || "");
+    if (values.bed_id) {
+      formData.append("bed_id", values.bed_id);
+    }
 
     // Optional: Joining Date
     if (values.joining_date) {
@@ -504,11 +554,11 @@ const SignupOnboardModal = ({ visible, onCancel, onSubmit, loading, error }) => 
                 },
               ]}
             >
-              <DatePicker
+              <AntDatePicker
                 format="DD-MM-YYYY"
                 style={{ width: "100%" }}
                 defaultPickerValue={dayjs().subtract(16, "year")}
-                disabledDate={(current) => {
+                disabledDate={(/** @type {any} */ current) => {
                   if (!current) return false;
                   const today = dayjs().startOf("day");
                   const sixteenYearsAgo = today.subtract(16, "year").startOf("day");
@@ -541,13 +591,26 @@ const SignupOnboardModal = ({ visible, onCancel, onSubmit, loading, error }) => 
             </Form.Item>
           </Col>
         </Row>
-
         <Row gutter={16}>
           <Col span={12}>
             <Form.Item name="room_number" label="Room Number" rules={[{ required: true, message: "Please select a room" }]}>
-              <Select placeholder="Select room" showSearch optionFilterProp="label" options={groupedRooms} />
+              <Select placeholder="Select room" showSearch optionFilterProp="label" options={groupedRooms} onChange={handleRoomChange} />
             </Form.Item>
           </Col>
+          <Col span={12}>
+            <Form.Item name="bed_id" label="Select Bed" rules={[{ required: true, message: "Please select a bed" }]}>
+              <Select placeholder="Select a bed" loading={loadingBeds} disabled={!selectedRoomId}>
+                {availableBeds.map((bed) => (
+                  <Option key={bed.bed_id} value={bed.bed_id}>
+                    {bed.bed_code} ({bed.bed_status})
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
           <Col span={12}>
             <Form.Item
               name="joining_date"
@@ -574,10 +637,10 @@ const SignupOnboardModal = ({ visible, onCancel, onSubmit, loading, error }) => 
                 },
               ]}
             >
-              <DatePicker
+              <AntDatePicker
                 format="DD-MM-YYYY"
                 style={{ width: "100%" }}
-                disabledDate={(current) => {
+                disabledDate={(/** @type {any} */ current) => {
                   if (!current) return false;
                   const today = dayjs().startOf("day");
                   const maxFuture = today.add(10, "days");
@@ -732,7 +795,7 @@ const SignupOnboardModal = ({ visible, onCancel, onSubmit, loading, error }) => 
                 if (field.field_type === "text" || field.field_type === "textarea") {
                   if (validationRules.minLength) {
                     rules.push({
-                      validator: (_, value) => {
+                      validator: (/** @type {any} */ _, /** @type {any} */ value) => {
                         if (value === null || value === undefined || value === "") {
                           return Promise.resolve();
                         }
@@ -745,7 +808,7 @@ const SignupOnboardModal = ({ visible, onCancel, onSubmit, loading, error }) => 
                   }
                   if (validationRules.maxLength) {
                     rules.push({
-                      validator: (_, value) => {
+                      validator: (/** @type {any} */ _, /** @type {any} */ value) => {
                         if (value === null || value === undefined || value === "") {
                           return Promise.resolve();
                         }
@@ -768,7 +831,7 @@ const SignupOnboardModal = ({ visible, onCancel, onSubmit, loading, error }) => 
                 if (field.field_type === "number") {
                   if (validationRules.min !== undefined) {
                     rules.push({
-                      validator: (_, value) => {
+                      validator: (/** @type {any} */ _, /** @type {any} */ value) => {
                         if (value === null || value === undefined || value === "") {
                           return Promise.resolve();
                         }
@@ -782,7 +845,7 @@ const SignupOnboardModal = ({ visible, onCancel, onSubmit, loading, error }) => 
                   }
                   if (validationRules.max !== undefined) {
                     rules.push({
-                      validator: (_, value) => {
+                      validator: (/** @type {any} */ _, /** @type {any} */ value) => {
                         if (value === null || value === undefined || value === "") {
                           return Promise.resolve();
                         }
@@ -817,7 +880,7 @@ const SignupOnboardModal = ({ visible, onCancel, onSubmit, loading, error }) => 
 
                 case "email":
                   rules.push({
-                    validator: (_, value) => {
+                    validator: (/** @type {any} */ _, /** @type {any} */ value) => {
                       if (value === null || value === undefined || value === "") {
                         return Promise.resolve();
                       }
@@ -837,10 +900,10 @@ const SignupOnboardModal = ({ visible, onCancel, onSubmit, loading, error }) => 
 
                 case "date":
                   fieldComponent = (
-                    <DatePicker
+                    <AntDatePicker
                       format="DD-MM-YYYY"
                       style={{ width: "100%" }}
-                      disabledDate={(current) => current && current >= dayjs().startOf("day")}
+                      disabledDate={(/** @type {any} */ current) => current && current >= dayjs().startOf("day")}
                       placeholder={`Select ${field.field_label.toLowerCase()}`}
                     />
                   );
@@ -849,7 +912,7 @@ const SignupOnboardModal = ({ visible, onCancel, onSubmit, loading, error }) => 
                 case "select":
                   fieldComponent = (
                     <Select placeholder={`Select ${field.field_label.toLowerCase()}`} showSearch optionFilterProp="label">
-                      {field.options?.map((option) => (
+                      {field.options?.map((/** @type {any} */ option) => (
                         <Option key={option.value} value={option.value} label={option.label}>
                           {option.label}
                         </Option>
@@ -863,7 +926,7 @@ const SignupOnboardModal = ({ visible, onCancel, onSubmit, loading, error }) => 
                   if (field.options && field.options.length > 0) {
                     fieldComponent = (
                       <Checkbox.Group>
-                        {field.options.map((option) => (
+                        {field.options.map((/** @type {any} */ option) => (
                           <Checkbox key={option.value} value={option.value}>
                             {option.label}
                           </Checkbox>
