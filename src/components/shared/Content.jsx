@@ -14,6 +14,7 @@ import ExpenseManagementPage from "../../pages/dashboard/expense/ExpenseManageme
 import AdminManagementPage from "../../pages/dashboard/admin/AdminManagementPage";
 import ActivityLogsPage from "../../pages/dashboard/activityLogs/ActivityLogsPage";
 import QRCodePage from "../../pages/dashboard/setting/QRCodePage";
+import AttendancePage from "../../pages/dashboard/attendance/AttendancePage";
 const { Content: AntContent } = Layout;
 
 const Content = ({ selectedMenu, onMenuChange }) => {
@@ -60,6 +61,9 @@ const Content = ({ selectedMenu, onMenuChange }) => {
       break;
     case "qr-codes":
       content = <QRCodePage />;
+      break;
+    case "attendance":
+      content = <AttendancePage />;
       break;
     default:
       content = <DashboardContents onMenuChange={onMenuChange} />;

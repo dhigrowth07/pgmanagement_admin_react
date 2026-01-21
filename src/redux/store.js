@@ -14,6 +14,7 @@ import adminReducer from "./admin/adminSlice";
 import activityLogsReducer from "./activityLogs/activityLogsSlice";
 import dashboardReducer from "./dashboard/dashboardSlice";
 import bedReducer from "./bed/bedSlice";
+import attendanceReducer from "./attendance/attendanceSlice";
 
 const persistConfig = {
   key: "root",
@@ -36,6 +37,7 @@ const rootReducer = combineReducers({
   activityLogs: activityLogsReducer,
   dashboard: dashboardReducer,
   bed: bedReducer,
+  attendance: attendanceReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

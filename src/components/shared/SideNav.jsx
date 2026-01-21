@@ -88,6 +88,13 @@ const BASE_MENU_ITEMS = [
     permission: "is_expense_management_enabled",
   },
   {
+    key: "attendance",
+    icon: <User size={18} />, 
+    label: "Attendance Management",
+    type: "item",
+    permission: "is_attendance_enabled",
+  },
+  {
     key: "admin-management",
     icon: <UserCog size={18} />,
     label: "Admin Management",
