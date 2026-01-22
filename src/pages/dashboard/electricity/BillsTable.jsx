@@ -1,7 +1,9 @@
 import React from 'react';
-import { Table, Tag, Button } from 'antd';
+import { Table, Tag, Button, Space, Alert } from 'antd';
+import { EditOutlined, EyeOutlined, CheckCircleOutlined } from '@ant-design/icons';
 
-const BillsTable = ({ bills = [], loading, onView }) => {
+const BillsTable = ({ bills = [], loading, onView, onEdit, onFinalizeAll }) => {
+  const draftBillsCount = bills.filter(bill => bill.status !== 'finalized').length;
   const columns = [
     { title: 'Block', dataIndex: 'block_name', key: 'block_name' },
     { title: 'Room', dataIndex: 'room_number', key: 'room_number' },
@@ -17,17 +19,59 @@ const BillsTable = ({ bills = [], loading, onView }) => {
       )
     },
     {
+      title: 'Status', key: 'status', render: (_, r) => (
+        <Tag color={r.status === 'finalized' ? 'green' : 'orange'}>
+          {r.status || 'draft'}
+        </Tag>
+      )
+    },
+    {
       title: 'Actions', key: 'actions', render: (_, r) => (
-        <Button size="small" onClick={() => onView?.(r)}>View</Button>
+        <Space>
+          <Button
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => onView?.(r)}
+          >
+            View
+          </Button>
+          <Button
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => onEdit?.(r)}
+            disabled={r.status === 'finalized'}
+          >
+            Edit
+          </Button>
+        </Space>
       )
     }
   ];
 
   return (
-    <Table rowKey={(r) => r.id} dataSource={bills} columns={columns} loading={loading} pagination={{ pageSize: 10 }} />
+    <div>
+      {draftBillsCount > 0 && (
+        <Alert
+          message={`${draftBillsCount} draft bill(s) need finalization`}
+          description={
+            <Button
+              type="primary"
+              icon={<CheckCircleOutlined />}
+              onClick={onFinalizeAll}
+              size="small"
+              style={{ marginTop: 8 }}
+            >
+              Finalize All Draft Bills
+            </Button>
+          }
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+      )}
+      <Table rowKey={(r) => r.id} dataSource={bills} columns={columns} loading={loading} pagination={{ pageSize: 10 }} />
+    </div>
   );
 };
 
 export default BillsTable;
-
-

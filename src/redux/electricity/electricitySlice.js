@@ -11,6 +11,14 @@ const initialState = {
   statistics: {},
   userBills: [],
   userHistory: { history: [], total_paid: "0.00" },
+  draftBills: [],
+  finalizedBills: [],
+  billShares: [],
+  editHistory: [],
+  editStatistics: {},
+  myRecentEdits: [],
+  billEditHistory: [],
+  activeUsers: [],
   status: "idle",
   error: null,
 };
@@ -81,6 +89,183 @@ export const deleteBill = createAsyncThunk("electricity/deleteBill", async (id, 
   }
 });
 
+export const deleteAllBills = createAsyncThunk("electricity/deleteAllBills", async (_, { dispatch, rejectWithValue }) => {
+  try {
+    const res = await electricityService.deleteAllBills();
+    toast.success(res.data.msg || "All bills deleted successfully");
+    dispatch(fetchBills());
+    dispatch(fetchStatistics());
+    dispatch(fetchUnpaidShares());
+    return res.data.data;
+  } catch (error) {
+    const err = handleApiError(error);
+    toast.error(err.msg || "Failed to delete all bills");
+    return rejectWithValue(err);
+  }
+});
+
+// Draft Status
+export const fetchDraftBills = createAsyncThunk("electricity/fetchDraftBills", async (_, { rejectWithValue }) => {
+  try {
+    const res = await electricityService.getDraftBills();
+    return res.data.data || [];
+  } catch (error) {
+    return rejectWithValue(handleApiError(error));
+  }
+});
+
+export const fetchFinalizedBills = createAsyncThunk("electricity/fetchFinalizedBills", async (_, { rejectWithValue }) => {
+  try {
+    const res = await electricityService.getFinalizedBills();
+    return res.data.data || [];
+  } catch (error) {
+    return rejectWithValue(handleApiError(error));
+  }
+});
+
+export const finalizeBill = createAsyncThunk("electricity/finalizeBill", async (id, { dispatch, rejectWithValue }) => {
+  try {
+    const res = await electricityService.finalizeBill(id);
+    toast.success(res.data.msg || "Bill finalized successfully");
+    dispatch(fetchBills());
+    dispatch(fetchDraftBills());
+    dispatch(fetchFinalizedBills());
+    dispatch(fetchStatistics());
+    return res.data.data;
+  } catch (error) {
+    const err = handleApiError(error);
+    toast.error(err.msg || "Failed to finalize bill");
+    return rejectWithValue(err);
+  }
+});
+
+export const unfinalizeBill = createAsyncThunk("electricity/unfinalizeBill", async (id, { dispatch, rejectWithValue }) => {
+  try {
+    const res = await electricityService.unfinalizeBill(id);
+    toast.success(res.data.msg || "Bill reverted to draft");
+    dispatch(fetchBills());
+    dispatch(fetchDraftBills());
+    dispatch(fetchFinalizedBills());
+    dispatch(fetchStatistics());
+    return res.data.data;
+  } catch (error) {
+    const err = handleApiError(error);
+    toast.error(err.msg || "Failed to unfinalize bill");
+    return rejectWithValue(err);
+  }
+});
+
+export const finalizeAllDraftBills = createAsyncThunk("electricity/finalizeAllDraftBills", async (_, { dispatch, rejectWithValue }) => {
+  try {
+    const res = await electricityService.finalizeAllDraftBills();
+    toast.success(res.data.msg || "All draft bills finalized successfully");
+    dispatch(fetchBills());
+    dispatch(fetchDraftBills());
+    dispatch(fetchFinalizedBills());
+    dispatch(fetchStatistics());
+    return res.data.data;
+  } catch (error) {
+    const err = handleApiError(error);
+    toast.error(err.msg || "Failed to finalize all draft bills");
+    return rejectWithValue(err);
+  }
+});
+
+// Manual Override (Shares)
+export const fetchBillShares = createAsyncThunk("electricity/fetchBillShares", async (billId, { rejectWithValue }) => {
+  try {
+    const res = await electricityService.getBillShares(billId);
+    return res.data.data || [];
+  } catch (error) {
+    return rejectWithValue(handleApiError(error));
+  }
+});
+
+export const addUserToBill = createAsyncThunk("electricity/addUserToBill", async ({ billId, data }, { dispatch, rejectWithValue }) => {
+  try {
+    const res = await electricityService.addUserToBill(billId, data);
+    toast.success(res.data.msg || "User added to bill successfully");
+    dispatch(fetchBillShares(billId));
+    dispatch(fetchBills());
+    dispatch(fetchStatistics());
+    dispatch(fetchUnpaidShares());
+    return res.data.data;
+  } catch (error) {
+    const err = handleApiError(error);
+    toast.error(err.msg || "Failed to add user to bill");
+    return rejectWithValue(err);
+  }
+});
+
+export const updateShareManually = createAsyncThunk("electricity/updateShareManually", async ({ billId, shareId, data }, { dispatch, rejectWithValue }) => {
+  try {
+    const res = await electricityService.updateShareManually(billId, shareId, data);
+    toast.success(res.data.msg || "Share updated successfully");
+    dispatch(fetchBillShares(billId));
+    dispatch(fetchBills());
+    dispatch(fetchStatistics());
+    dispatch(fetchUnpaidShares());
+    return res.data.data;
+  } catch (error) {
+    const err = handleApiError(error);
+    toast.error(err.msg || "Failed to update share");
+    return rejectWithValue(err);
+  }
+});
+
+export const removeUserFromBill = createAsyncThunk("electricity/removeUserFromBill", async ({ billId, shareId }, { dispatch, rejectWithValue }) => {
+  try {
+    const res = await electricityService.removeUserFromBill(billId, shareId);
+    toast.success(res.data.msg || "User removed from bill successfully");
+    dispatch(fetchBillShares(billId));
+    dispatch(fetchBills());
+    dispatch(fetchStatistics());
+    dispatch(fetchUnpaidShares());
+    return res.data.data;
+  } catch (error) {
+    const err = handleApiError(error);
+    toast.error(err.msg || "Failed to remove user from bill");
+    return rejectWithValue(err);
+  }
+});
+
+// Audit & History
+export const fetchAllEditHistory = createAsyncThunk("electricity/fetchAllEditHistory", async (params = {}, { rejectWithValue }) => {
+  try {
+    const res = await electricityService.getAllEditHistory(params);
+    return res.data.data || [];
+  } catch (error) {
+    return rejectWithValue(handleApiError(error));
+  }
+});
+
+export const fetchEditStatistics = createAsyncThunk("electricity/fetchEditStatistics", async (_, { rejectWithValue }) => {
+  try {
+    const res = await electricityService.getEditStatistics();
+    return res.data.data || {};
+  } catch (error) {
+    return rejectWithValue(handleApiError(error));
+  }
+});
+
+export const fetchMyRecentEdits = createAsyncThunk("electricity/fetchMyRecentEdits", async (params = {}, { rejectWithValue }) => {
+  try {
+    const res = await electricityService.getMyRecentEdits(params);
+    return res.data.data || [];
+  } catch (error) {
+    return rejectWithValue(handleApiError(error));
+  }
+});
+
+export const fetchBillEditHistory = createAsyncThunk("electricity/fetchBillEditHistory", async (billId, { rejectWithValue }) => {
+  try {
+    const res = await electricityService.getBillEditHistory(billId);
+    return res.data.data || [];
+  } catch (error) {
+    return rejectWithValue(handleApiError(error));
+  }
+});
+
 export const fetchUnpaidShares = createAsyncThunk("electricity/fetchUnpaidShares", async (_, { rejectWithValue }) => {
   try {
     const res = await electricityService.getUnpaidShares();
@@ -109,8 +294,20 @@ export const markShareAsPaid = createAsyncThunk("electricity/markShareAsPaid", a
     return res.data.data;
   } catch (error) {
     const err = handleApiError(error);
-    toast.error(err.msg || "Failed to mark share as paid");
+    // Show detailed error message including hint if available
+    const errorMessage = err.hint ? `${err.msg} ${err.hint}` : (err.msg || "Failed to mark share as paid");
+    toast.error(errorMessage, { duration: 5000 }); // Show for 5 seconds
     return rejectWithValue(err);
+  }
+});
+
+// Active Users
+export const fetchActiveUsers = createAsyncThunk("electricity/fetchActiveUsers", async (_, { rejectWithValue }) => {
+  try {
+    const res = await electricityService.getActiveUsers();
+    return res.data.data || [];
+  } catch (error) {
+    return rejectWithValue(handleApiError(error));
   }
 });
 
@@ -159,13 +356,44 @@ const electricitySlice = createSlice({
         state.selectedBill = action.payload;
       })
 
+      // Draft Status
+      .addCase(fetchDraftBills.fulfilled, (state, action) => {
+        state.draftBills = action.payload;
+      })
+      .addCase(fetchFinalizedBills.fulfilled, (state, action) => {
+        state.finalizedBills = action.payload;
+      })
+
+      // Manual Override (Shares)
+      .addCase(fetchBillShares.fulfilled, (state, action) => {
+        state.billShares = [...(action.payload.shares || [])];
+      })
+      .addCase(fetchBillShares.rejected, (state, action) => {
+        // When fetching bill shares fails (e.g., 404 "No shares found"), set to empty array
+        state.billShares = [];
+      })
+
+      // Audit & History
+      .addCase(fetchAllEditHistory.fulfilled, (state, action) => {
+        state.editHistory = action.payload;
+      })
+      .addCase(fetchEditStatistics.fulfilled, (state, action) => {
+        state.editStatistics = action.payload;
+      })
+      .addCase(fetchMyRecentEdits.fulfilled, (state, action) => {
+        state.myRecentEdits = action.payload;
+      })
+      .addCase(fetchBillEditHistory.fulfilled, (state, action) => {
+        state.billEditHistory = action.payload;
+      })
+
       .addCase(fetchUnpaidShares.pending, (state, action) => {
         state.unpaidRequestId = action.meta.requestId;
       })
       .addCase(fetchUnpaidShares.fulfilled, (state, action) => {
-        if (state.unpaidRequestId === action.meta.requestId) {
-          state.unpaidShares = action.payload;
-        }
+        // Always update unpaidShares when fetch succeeds, regardless of requestId
+        // This ensures updates from manual share editing are reflected immediately
+        state.unpaidShares = action.payload;
       })
       .addCase(fetchUnpaidShares.rejected, (state, action) => {
         if (state.unpaidRequestId === action.meta.requestId) {
@@ -181,6 +409,11 @@ const electricitySlice = createSlice({
       })
       .addCase(fetchUserPaymentHistory.fulfilled, (state, action) => {
         state.userHistory = action.payload;
+      })
+
+      // Active Users
+      .addCase(fetchActiveUsers.fulfilled, (state, action) => {
+        state.activeUsers = action.payload;
       })
 
       .addMatcher(
@@ -214,5 +447,19 @@ export const selectStatistics = (state) => state.electricity.statistics;
 export const selectUserBills = (state) => state.electricity.userBills;
 export const selectUserHistory = (state) => state.electricity.userHistory;
 export const selectElectricityStatus = (state) => state.electricity.status;
+
+// Draft Status
+export const selectDraftBills = (state) => state.electricity.draftBills;
+export const selectFinalizedBills = (state) => state.electricity.finalizedBills;
+
+// Manual Override (Shares)
+export const selectBillShares = (state) => state.electricity.billShares;
+export const selectActiveUsers = (state) => state.electricity.activeUsers;
+
+// Audit & History
+export const selectEditHistory = (state) => state.electricity.editHistory;
+export const selectEditStatistics = (state) => state.electricity.editStatistics;
+export const selectMyRecentEdits = (state) => state.electricity.myRecentEdits;
+export const selectBillEditHistory = (state) => state.electricity.billEditHistory;
 
 export default electricitySlice.reducer;
