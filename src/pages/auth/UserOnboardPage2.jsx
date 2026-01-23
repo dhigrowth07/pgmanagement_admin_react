@@ -9,6 +9,7 @@ import { generateCustomerPDF } from "../../utils/pdfGenerator";
 import { getTermsAndConditions } from "../../services/tenantAdminsService";
 import { resizeSignatureImage, imageToDataURL } from "../../utils/imageResizer";
 import { getPublicAvailableBeds } from "../../services/bedService";
+import { dobRules } from "../../utils/validators";
 
 const { Title, Paragraph, Text } = Typography;
 const { Option } = Select;
@@ -478,8 +479,37 @@ const UserOnboardPage2 = () => {
             <Input placeholder="Mobile number" />
           </Form.Item>
 
-          <Form.Item name="dob" label="Date of Birth" rules={[{ required: true, message: "Please select your date of birth" }]}>
-            <DatePicker format="DD-MM-YYYY" style={{ width: "100%" }} disabledDate={(current) => current && current >= dayjs().startOf("day")} />
+          <Form.Item 
+            name="dob" 
+            label="Date of Birth" 
+            rules={[
+              ...dobRules,
+              {
+                validator: (_, value) => {
+                  if (!value) {
+                    return Promise.resolve(); // Required validation is handled by dobRules
+                  }
+                  const dobDate = dayjs(value);
+                  const today = dayjs();
+                  const age = today.diff(dobDate, "year");
+                  if (age < 16) {
+                    return Promise.reject(new Error("You must be at least 16 years old to register"));
+                  }
+                  if (age > 100) {
+                    return Promise.reject(new Error("Please enter a valid date of birth"));
+                  }
+                  return Promise.resolve();
+                },
+              },
+            ]}
+          >
+            <DatePicker 
+              format="DD-MM-YYYY" 
+              style={{ width: "100%" }} 
+              placeholder="Select your date of birth"
+              defaultPickerValue={dayjs().subtract(18, "year")}
+              disabledDate={(current) => current && current >= dayjs().startOf("day")} 
+            />
           </Form.Item>
 
           <Form.Item name="gender" label="Gender" rules={[{ required: true, message: "Please select gender" }]}>

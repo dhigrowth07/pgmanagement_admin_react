@@ -99,14 +99,47 @@ const BillSharesManager = () => {
   };
 
   const columns = [
-    { title: 'User', dataIndex: 'user_name', key: 'user_name' },
-    { title: 'Email', dataIndex: 'user_email', key: 'user_email' },
-    { title: 'Share Amount', dataIndex: 'share_amount', key: 'share_amount', render: (v) => `₹${Number(v).toFixed(2)}` },
-    { title: 'Paid', dataIndex: 'paid', key: 'paid', render: (paid) => paid ? 'Yes' : 'No' },
-    { title: 'Manual Edit', dataIndex: 'is_manually_edited', key: 'is_manually_edited', render: (edited) => edited ? 'Yes' : 'No' },
+    { 
+      title: 'User', 
+      dataIndex: 'user_name', 
+      key: 'user_name',
+      width: 150,
+      fixed: 'left' // Keep user visible on scroll
+    },
+    { 
+      title: 'Email', 
+      dataIndex: 'user_email', 
+      key: 'user_email',
+      responsive: ['md'], // Hide on mobile (screens < 768px)
+      width: 200
+    },
+    { 
+      title: 'Share Amount', 
+      dataIndex: 'share_amount', 
+      key: 'share_amount', 
+      render: (v) => `₹${Number(v).toFixed(2)}`,
+      width: 120
+    },
+    { 
+      title: 'Paid', 
+      dataIndex: 'paid', 
+      key: 'paid', 
+      render: (paid) => paid ? 'Yes' : 'No',
+      width: 80
+    },
+    { 
+      title: 'Manual Edit', 
+      dataIndex: 'is_manually_edited', 
+      key: 'is_manually_edited', 
+      render: (edited) => edited ? 'Yes' : 'No',
+      responsive: ['lg'], // Hide on screens < 1024px
+      width: 100
+    },
     {
       title: 'Actions',
       key: 'actions',
+      fixed: 'right', // Stick to right on scroll
+      width: 100,
       render: (_, record) => (
         <Space>
           <Button
@@ -144,10 +177,11 @@ const BillSharesManager = () => {
       <h3 className="font-semibold mb-4">Manual Share Management</h3>
 
       <Card size="small" className="mb-4">
-        <Space>
-          <span>Select Bill:</span>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-0 sm:space-x-2">
+          <span className="self-start sm:self-center">Select Bill:</span>
           <Select
-            style={{ width: 300 }}
+            className="w-full sm:w-auto"
+            style={{ minWidth: '100%', maxWidth: '100%' }}
             placeholder="Choose a bill to manage shares"
             onChange={handleBillChange}
             value={selectedBillId}
@@ -164,16 +198,17 @@ const BillSharesManager = () => {
               icon={<PlusOutlined />}
               onClick={handleAddUser}
               size="small"
+              className="w-full sm:w-auto"
             >
               Add User
             </Button>
           )}
-        </Space>
+        </div>
       </Card>
 
       {selectedBillId && selectedBill && (
         <Card size="small" className="mb-4">
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <strong>Room:</strong> {selectedBill.room_number}
             </div>
@@ -196,9 +231,10 @@ const BillSharesManager = () => {
           rowKey={(r) => r.id}
           dataSource={billShares}
           columns={columns}
-              loading={status === 'loading' || status === 'loading_action'}
+          loading={status === 'loading' || status === 'loading_action'}
           pagination={{ pageSize: 10 }}
           size="small"
+          scroll={{ x: 800 }} // Enable horizontal scroll on mobile
         />
       )}
 

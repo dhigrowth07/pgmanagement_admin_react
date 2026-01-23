@@ -212,18 +212,37 @@ const ExpenseManagementPage = () => {
       <ExpenseStatistics summary={summary} meta={meta} />
       <ExpenseCharts summary={summary} meta={meta} />
       <Row style={{ marginBottom: 16 }}>
-        <Col xs={24} sm={24} md={12} className="md:text-right text-center">
-          <Space direction="horizontal" className="flex justify-between">
-            <Button icon={<ReloadOutlined spin={isLoading} />} onClick={handleRefresh} disabled={isLoading}>
+        <Col xs={24}>
+          <div className="flex flex-wrap gap-2 justify-center sm:justify-end">
+            <Button 
+              icon={<ReloadOutlined spin={isLoading} />} 
+              onClick={handleRefresh} 
+              disabled={isLoading}
+              className="flex-1 sm:flex-none"
+            >
               Refresh
             </Button>
-            <Button icon={<BarChartOutlined />} onClick={() => openModal("summary")}>
+            <Button 
+              icon={<BarChartOutlined />} 
+              onClick={() => openModal("summary")}
+              className="flex-1 sm:flex-none"
+            >
               View Summary
             </Button>
-            <Button icon={<ExportOutlined />} onClick={() => handleExport("xlsx")} loading={exportLoading} disabled={exportLoading}>
+            <Button 
+              icon={<ExportOutlined />} 
+              onClick={() => handleExport("xlsx")} 
+              loading={exportLoading} 
+              disabled={exportLoading}
+              className="flex-1 sm:flex-none"
+            >
               Export
             </Button>
-            <Button icon={<FolderOutlined />} onClick={() => openCategoryModal("manage")}>
+            <Button 
+              icon={<FolderOutlined />} 
+              onClick={() => openCategoryModal("manage")}
+              className="flex-1 sm:flex-none"
+            >
               Manage Categories
             </Button>
             <Button
@@ -237,10 +256,11 @@ const ExpenseManagementPage = () => {
                   openModal("create");
                 }
               }}
+              className="w-full sm:w-auto"
             >
               Add Expense
             </Button>
-          </Space>
+          </div>
         </Col>
       </Row>
 

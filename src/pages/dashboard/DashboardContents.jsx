@@ -191,7 +191,7 @@ const DashboardContents = ({ onMenuChange }) => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-3 bg-gray-50 min-h-screen">
       {isLoading ? (
         <div className="flex items-center h-screen justify-center py-10">
           <span className="ml-2 text-lg text-gray-700 flex flex-col items-center space-y-2">

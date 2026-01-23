@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Form, InputNumber, Select, DatePicker } from "antd";
+import { Modal, Form, InputNumber, Select, DatePicker, Alert } from "antd";
 import { useDispatch, useSelector } from "react-redux";
-import { createBill, selectElectricityStatus } from "../../../../redux/electricity/electricitySlice";
+import { createBill, selectElectricityStatus, selectBills } from "../../../../redux/electricity/electricitySlice";
 import moment from "moment";
 import { getAllRooms } from "../../../../services/roomService";
 
@@ -9,8 +9,10 @@ const CreateBillModal = ({ visible, onCancel, onCreated }) => {
   const [form] = Form.useForm();
   const dispatch = useDispatch();
   const status = useSelector(selectElectricityStatus);
+  const bills = useSelector(selectBills);
   const [rooms, setRooms] = useState([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
+  const [duplicateWarning, setDuplicateWarning] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
@@ -30,6 +32,24 @@ const CreateBillModal = ({ visible, onCancel, onCreated }) => {
     loadRooms();
   }, [visible]);
 
+  // Check for duplicate bills when room or month changes
+  const checkForDuplicateBill = () => {
+    const roomId = form.getFieldValue("room_id");
+    const month = form.getFieldValue("month");
+
+    if (!roomId || !month) {
+      setDuplicateWarning(false);
+      return;
+    }
+
+    const monthStr = month.format("YYYY-MM");
+    /** @param {any} bill */
+    const matchesBill = (bill) => bill.room_id === roomId && bill.month === monthStr;
+    const existingBill = bills.find(matchesBill);
+
+    setDuplicateWarning(!!existingBill);
+  };
+
   const handleOk = async () => {
     try {
       const values = await form.validateFields();
@@ -45,6 +65,7 @@ const CreateBillModal = ({ visible, onCancel, onCreated }) => {
       if (!action.error) {
         onCreated?.();
         form.resetFields();
+        setDuplicateWarning(false);
         onCancel?.();
       }
     } catch (error) {
@@ -61,7 +82,22 @@ const CreateBillModal = ({ visible, onCancel, onCreated }) => {
       confirmLoading={status === "loading_action"}
       destroyOnClose
     >
-      <Form layout="vertical" form={form}>
+      <Form 
+        layout="vertical" 
+        form={form}
+        onValuesChange={checkForDuplicateBill}
+      >
+        {/* Duplicate Warning Alert */}
+        {duplicateWarning && (
+          <Alert
+            message="Bill Already Exists"
+            description="A bill for this room and month already exists. If you create this bill, the old bill will be updated."
+            type="warning"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+        )}
+
         {/* Room Selection */}
         <Form.Item
           label="Room"
@@ -94,9 +130,25 @@ const CreateBillModal = ({ visible, onCancel, onCreated }) => {
             picker="month"
             className="w-full"
             format="MMMM YYYY"
-            disabledDate={(current) =>
-              current && current > moment().endOf("month")
-            }
+            disabledDate={(current) => {
+              // Allow selection of months from the current year and one previous year
+              const currentYear = moment().year();
+              const currentMonth = moment().month();
+              const selectedYear = current.year();
+              const selectedMonth = current.month();
+
+              // Disable dates that are not in the current year or one previous year
+              if (selectedYear > currentYear || selectedYear < currentYear - 1) {
+                return true;
+              }
+
+              // For the current year, disable months after the current month
+              if (selectedYear === currentYear && selectedMonth > currentMonth) {
+                return true;
+              }
+
+              return false;
+            }}
           />
         </Form.Item>
 

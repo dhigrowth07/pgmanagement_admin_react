@@ -22,25 +22,53 @@ const DraftBillsTable = () => {
   };
 
   const columns = [
-    { title: 'Block', dataIndex: 'block_name', key: 'block_name' },
-    { title: 'Room', dataIndex: 'room_number', key: 'room_number' },
-    { title: 'Month', dataIndex: 'month', key: 'month' },
-    { title: 'Amount', dataIndex: 'amount', key: 'amount', render: (v) => `₹${Number(v).toFixed(2)}` },
+    { 
+      title: 'Block', 
+      dataIndex: 'block_name', 
+      key: 'block_name',
+      responsive: ['md'], // Hide on mobile (screens < 768px)
+      width: 150
+    },
+    { 
+      title: 'Room', 
+      dataIndex: 'room_number', 
+      key: 'room_number',
+      width: 100
+    },
+    { 
+      title: 'Month', 
+      dataIndex: 'month', 
+      key: 'month',
+      width: 120
+    },
+    { 
+      title: 'Amount', 
+      dataIndex: 'amount', 
+      key: 'amount', 
+      render: (v) => `₹${Number(v).toFixed(2)}`,
+      width: 120
+    },
     {
       title: 'Shares',
       key: 'shares',
       render: (_, record) => (
         <Tag color="blue">{record.total_shares || 0} users</Tag>
-      )
+      ),
+      responsive: ['sm'], // Hide on extra small screens
+      width: 120
     },
     {
       title: 'Status',
       key: 'status',
-      render: () => <Tag color="orange">Draft</Tag>
+      render: () => <Tag color="orange">Draft</Tag>,
+      responsive: ['sm'], // Hide on extra small screens
+      width: 100
     },
     {
       title: 'Actions',
       key: 'actions',
+      fixed: 'right', // Stick to right on scroll
+      width: 40,
       render: (_, record) => (
         <Space>
           <Button
@@ -66,6 +94,7 @@ const DraftBillsTable = () => {
         loading={status === 'loading'}
         pagination={{ pageSize: 10 }}
         size="small"
+        scroll={{ x: 800 }} // Enable horizontal scroll on mobile
       />
     </div>
   );

@@ -54,6 +54,8 @@ const AttendanceReport = () => {
       title: "User",
       dataIndex: "user_name",
       key: "user_name",
+      fixed: 'left', // Keep user visible on scroll
+      width: 200,
       render: (text, record) => (
         <div>
           <div className="font-medium">{text}</div>
@@ -65,11 +67,14 @@ const AttendanceReport = () => {
       title: "Room",
       dataIndex: "room_number",
       key: "room_number",
+      responsive: ['md'], // Hide on mobile (screens < 768px)
+      width: 100,
       render: (text) => text ? <Tag>{text}</Tag> : <span className="text-gray-400">N/A</span>,
     },
     {
       title: "Summary",
       key: "summary",
+      width: 150,
       render: (_, record) => (
         <div className="flex gap-2 text-xs">
           <span className="text-green-600 font-semibold">{record.present_days} P</span>
@@ -82,6 +87,7 @@ const AttendanceReport = () => {
       title: "Attendance %",
       dataIndex: "attendance_percentage",
       key: "attendance_percentage",
+      width: 180,
       render: (percent) => {
         let status = "normal";
         if (percent >= 90) status = "success";
@@ -100,18 +106,20 @@ const AttendanceReport = () => {
   return (
     <div>
       <Card className="mb-4 shadow-sm border-0">
-        <div className="flex justify-between items-center">
-             <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+             <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full sm:w-auto">
                 <DatePicker 
                     picker="month" 
                     value={selectedMonth}
                     onChange={setSelectedMonth}
                     allowClear={false}
+                    className="w-full sm:w-auto"
                 />
                 <Button 
                     type="primary" 
                     icon={<Search size={16} />} 
                     onClick={fetchReport}
+                    className="w-full sm:w-auto"
                 >
                     Get Report
                 </Button>
@@ -124,7 +132,12 @@ const AttendanceReport = () => {
                 if xlsx is missing, unless I explicitly check. 
                 Wait, I can't easily check. I'll include the button but make it safe. 
             */}
-             <Button icon={<Download size={16} />} onClick={handleExport} disabled={!report?.length}>
+             <Button 
+               icon={<Download size={16} />} 
+               onClick={handleExport} 
+               disabled={!report?.length}
+               className="w-full sm:w-auto"
+             >
                 Export to Excel
             </Button>
         </div>
@@ -136,6 +149,7 @@ const AttendanceReport = () => {
         rowKey="user_id"
         loading={loading}
         pagination={{ pageSize: 20 }}
+        scroll={{ x: 700 }} // Enable horizontal scroll on mobile
       />
       
       {/* 

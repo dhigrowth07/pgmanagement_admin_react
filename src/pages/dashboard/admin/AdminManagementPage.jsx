@@ -38,7 +38,7 @@ const AdminManagementPage = () => {
   // Show access denied message if not main admin (after check completes)
   if (!isMainAdmin && adminStatus !== "loading" && adminStatus !== "idle") {
     return (
-      <div className="p-6 bg-gray-50 min-h-screen">
+      <div className="bg-gray-50 min-h-screen">
         <Card className="shadow-sm">
           <div className="text-center py-8">
             <Title level={3}>Access Denied</Title>
@@ -50,7 +50,7 @@ const AdminManagementPage = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="bg-gray-50 min-h-screen">
       <Card className="shadow-sm">
         <div className="mb-6">
           <Title level={2}>Admin Management</Title>

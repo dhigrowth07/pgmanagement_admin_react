@@ -142,26 +142,32 @@ const ActivityLogsPage = () => {
   const isLoading = status === "loading";
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="bg-gray-50 min-h-screen">
       <Card className="shadow-sm">
         <div className="mb-6">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <Title level={2}>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+            <Title level={2} className="mb-0">
               <FileTextOutlined style={{ marginRight: 8 }} />
               Activity Logs
             </Title>
-            <Space>
+            <Space className="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
               {isAdmin && (
                 <Button
                   danger
                   icon={<DeleteOutlined />}
                   onClick={handleDeleteAll}
                   loading={isLoading}
+                  className="w-full sm:w-auto"
                 >
                   Delete All Logs
                 </Button>
               )}
-              <Button icon={<ReloadOutlined />} onClick={handleRefresh} loading={isLoading}>
+              <Button 
+                icon={<ReloadOutlined />} 
+                onClick={handleRefresh} 
+                loading={isLoading}
+                className="w-full sm:w-auto"
+              >
                 Refresh
               </Button>
             </Space>

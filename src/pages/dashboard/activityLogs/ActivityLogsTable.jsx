@@ -74,6 +74,7 @@ const ActivityLogsTable = ({ logs, loading, pagination, onTableChange, onViewDet
       dataIndex: "activity_category",
       key: "activity_category",
       width: 140,
+      responsive: ['lg'], // Hide on screens < 1024px
       render: (category) => (
         <Tag color="geekblue">{category || "N/A"}</Tag>
       ),
@@ -82,6 +83,7 @@ const ActivityLogsTable = ({ logs, loading, pagination, onTableChange, onViewDet
       title: "Description",
       dataIndex: "description",
       key: "description",
+      responsive: ['md'], // Hide on screens < 768px
       ellipsis: {
         showTitle: false,
       },
@@ -96,6 +98,7 @@ const ActivityLogsTable = ({ logs, loading, pagination, onTableChange, onViewDet
       dataIndex: "endpoint",
       key: "endpoint",
       width: 200,
+      responsive: ['xl'], // Hide on screens < 1280px
       ellipsis: {
         showTitle: false,
       },
@@ -110,6 +113,7 @@ const ActivityLogsTable = ({ logs, loading, pagination, onTableChange, onViewDet
       dataIndex: "method",
       key: "method",
       width: 100,
+      responsive: ['lg'], // Hide on screens < 1024px
       render: (method) => (
         <Tag color={getMethodColor(method)}>{method || "N/A"}</Tag>
       ),
@@ -119,6 +123,7 @@ const ActivityLogsTable = ({ logs, loading, pagination, onTableChange, onViewDet
       dataIndex: "response_status",
       key: "response_status",
       width: 100,
+      responsive: ['lg'], // Hide on screens < 1024px
       render: (status) => (
         <Tag color={getStatusColor(status)}>{status || "N/A"}</Tag>
       ),
@@ -128,6 +133,7 @@ const ActivityLogsTable = ({ logs, loading, pagination, onTableChange, onViewDet
       dataIndex: "ip_address",
       key: "ip_address",
       width: 130,
+      responsive: ['xl'], // Hide on screens < 1280px
       render: (ip) => <span style={{ fontSize: "12px" }}>{ip || "N/A"}</span>,
     },
     {
@@ -142,7 +148,7 @@ const ActivityLogsTable = ({ logs, loading, pagination, onTableChange, onViewDet
     {
       title: "Actions",
       key: "actions",
-      width: 100,
+      width: 40,
       fixed: "right",
       render: (_, record) => (
         <Space>

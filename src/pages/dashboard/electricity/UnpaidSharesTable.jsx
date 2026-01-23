@@ -61,17 +61,48 @@ const UnpaidSharesTable = () => {
   };
 
   const columns = [
-    { title: "Block", dataIndex: "block_name", key: "block_name" },
-    { title: "Room", dataIndex: "room_number", key: "room_number" },
-    { title: "Month", dataIndex: "month", key: "month" },
-    { title: "User", dataIndex: "name", key: "name" },
-    { title: "Email", dataIndex: "email", key: "email" },
-    { title: "Share", dataIndex: "share_amount", key: "share_amount", render: (v) => `₹${Number(v).toFixed(2)}` },
+    {
+      title: "Block",
+      dataIndex: "block_name",
+      key: "block_name"
+    },
+    {
+      title: "Room",
+      dataIndex: "room_number",
+      key: "room_number"
+    },
+    {
+      title: "Month",
+      dataIndex: "month",
+      key: "month"
+    },
+    {
+      title: "User",
+      dataIndex: "name",
+      key: "name"
+    },
+    {
+      title: "Email",
+      dataIndex: "email",
+      key: "email"
+    },
+    {
+      title: "Share",
+      dataIndex: "share_amount",
+      key: "share_amount",
+      render: (v) => `₹${Number(v).toFixed(2)}`
+    },
     {
       title: "Actions",
       key: "actions",
       render: (_, r) => (
-        <Button size="small" type="primary" onClick={() => dispatch(markShareAsPaid(r.id))} loading={status === "loading_action"}>
+        <Button 
+          size="small" 
+          type="primary" 
+          onClick={() => dispatch(markShareAsPaid(r.id))} 
+          loading={status === "loading_action"}
+          style={{ padding: '0 8px' }}
+        >
           Mark Paid
         </Button>
       ),
@@ -79,18 +110,19 @@ const UnpaidSharesTable = () => {
   ];
 
   return (
-    <>
+    <div style={{ width: '100%', overflowX: 'auto' }}>
       <Row gutter={[16, 16]} align="middle" style={{ marginBottom: 16 }}>
-        <Col xs={24} sm={24} md={6}>
-          <h3 className="font-semibold m-0">Unpaid Shares</h3>
+        <Col xs={24} sm={24} md={8}>
+          <h3 className="font-semibold m-0" style={{ fontSize: '1.2rem' }}>Unpaid Shares</h3>
         </Col>
-        <Col xs={24} sm={12} md={6}>
+        <Col xs={24} sm={12} md={8}>
           <Select
             value={selectedBlock}
             onChange={handleBlockChange}
             placeholder="Select Block"
             allowClear
             style={{ width: "100%" }}
+            size="small"
           >
             {blocks.map((block) => (
               <Option key={block} value={block}>
@@ -99,7 +131,7 @@ const UnpaidSharesTable = () => {
             ))}
           </Select>
         </Col>
-        <Col xs={24} sm={12} md={6}>
+        <Col xs={24} sm={12} md={8}>
           <Select
             value={selectedRoom}
             onChange={handleRoomChange}
@@ -107,6 +139,7 @@ const UnpaidSharesTable = () => {
             allowClear
             style={{ width: "100%" }}
             disabled={!selectedBlock}
+            size="small"
           >
             {rooms.map((room) => (
               <Option key={room} value={room}>
@@ -115,15 +148,32 @@ const UnpaidSharesTable = () => {
             ))}
           </Select>
         </Col>
-        <Col xs={24} sm={24} md={6} style={{ textAlign: "right" }}>
-          <Button size="small" icon={<ReloadOutlined />} onClick={() => dispatch(fetchUnpaidShares())} loading={status === "loading_action"}>
+        <Col xs={24} sm={24} md={24} style={{ textAlign: "right", marginTop: 8 }}>
+          <Button 
+            size="small" 
+            icon={<ReloadOutlined />} 
+            onClick={() => dispatch(fetchUnpaidShares())} 
+            loading={status === "loading_action"}
+            style={{ padding: '0 12px' }}
+          >
             Refresh
           </Button>
         </Col>
       </Row>
 
-      <Table rowKey={(r) => r.id} dataSource={filteredUnpaid} columns={columns} pagination={{ pageSize: 8 }} />
-    </>
+      <Table 
+        rowKey={(r) => r.id} 
+        dataSource={filteredUnpaid} 
+        columns={columns} 
+        pagination={{ 
+          pageSize: 8,
+          size: 'small',
+          showSizeChanger: false
+        }} 
+        scroll={{ x: true }} 
+        size="small"
+      />
+    </div>
   );
 };
 

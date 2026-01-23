@@ -40,23 +40,28 @@ const IssuesTable = ({ issues, loading, onView, onUpdateStatus }) => {
             title: 'Issue ID',
             dataIndex: 'issue_id',
             key: 'issue_id',
+            width: 100,
             sorter: (a, b) => a.issue_id - b.issue_id,
         },
         {
             title: 'Title',
             dataIndex: 'title',
             key: 'title',
+            width: 200,
         },
         {
             title: 'Reported By',
             dataIndex: 'user_name',
             render: (user_name) => user_name || 'N/A',
             key: 'user_name',
+            responsive: ['md'], // Hide on mobile (screens < 768px)
+            width: 150,
         },
         {
             title: 'Status',
             dataIndex: 'status',
             key: 'status',
+            width: 150,
             render: (status) => {
                 // Normalize status for display (handle both formats)
                 const normalizedStatus = status === 'open' ? 'unresolved' : 
@@ -84,6 +89,7 @@ const IssuesTable = ({ issues, loading, onView, onUpdateStatus }) => {
             title: 'Reported On',
             dataIndex: 'created_at',
             key: 'created_at',
+            width: 180,
             render: (date) => dayjs(date).format('DD MMM YYYY, h:mm A'),
             sorter: (a, b) => dayjs(a.created_at).unix() - dayjs(b.created_at).unix(),
             defaultSortOrder: 'descend',
@@ -92,6 +98,8 @@ const IssuesTable = ({ issues, loading, onView, onUpdateStatus }) => {
             title: 'Actions',
             key: 'actions',
             align: 'center',
+            fixed: 'right', // Stick to right on scroll
+            width: 100,
             render: (_, record) => (
                 <Space>
                     <Tooltip title="View Details">
@@ -117,6 +125,7 @@ const IssuesTable = ({ issues, loading, onView, onUpdateStatus }) => {
                 pageSizeOptions: ["10", "20", "50"],
             }}
             onChange={handleTableChange}
+            scroll={{ x: 800 }} // Enable horizontal scroll on mobile
         />
     );
 };

@@ -149,3 +149,5 @@ const ElectricityManagementPage = () => {
 };
 
 export default ElectricityManagementPage;
+
+
