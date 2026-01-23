@@ -177,11 +177,11 @@ const BillSharesManager = () => {
       <h3 className="font-semibold mb-4">Manual Share Management</h3>
 
       <Card size="small" className="mb-4">
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-0 sm:space-x-2">
-          <span className="self-start sm:self-center">Select Bill:</span>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-2 items-start sm:items-center">
+          <span className="whitespace-nowrap">Select Bill:</span>
           <Select
-            className="w-full sm:w-auto"
-            style={{ minWidth: '100%', maxWidth: '100%' }}
+            className="w-full sm:flex-1"
+            style={{ minWidth: '200px' }}
             placeholder="Choose a bill to manage shares"
             onChange={handleBillChange}
             value={selectedBillId}
@@ -198,7 +198,7 @@ const BillSharesManager = () => {
               icon={<PlusOutlined />}
               onClick={handleAddUser}
               size="small"
-              className="w-full sm:w-auto"
+              className="w-full sm:w-auto whitespace-nowrap"
             >
               Add User
             </Button>

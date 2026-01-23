@@ -21,10 +21,26 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, onCreate
   const handleMarkEBAsPaid = async (record) => {
     const userId = record.user_id;
     const bills = userElectricityBills[userId] || [];
-    const unpaidBills = bills.filter((b) => !b.paid && (b.share_id || b.id));
+    
+    // Get the payment cycle month (YYYY-MM format)
+    const paymentCycleMonth = record.payment_cycle_start_date 
+      ? dayjs(record.payment_cycle_start_date).format('YYYY-MM')
+      : null;
+    
+    // Filter unpaid bills that match the current payment cycle month
+    const unpaidBills = bills.filter((b) => {
+      if (b.paid || !(b.share_id || b.id)) return false;
+      
+      // Only include bills from the current payment cycle month
+      if (paymentCycleMonth && b.month) {
+        return b.month === paymentCycleMonth;
+      }
+      
+      return true; // If no month info, include it (backward compatibility)
+    });
 
     if (unpaidBills.length === 0) {
-      toast.error("No unpaid electricity bills found for this user");
+      toast.error("No unpaid electricity bills found for this payment cycle");
       return;
     }
 
@@ -47,7 +63,6 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, onCreate
         onEBMarkedAsPaid();
       }
 
-      toast.success(`Successfully marked ${unpaidBills.length} electricity bill(s) as paid`);
     } catch (error) {
       console.error("Error marking EB as paid:", error);
       toast.error("Failed to mark some electricity bills as paid");
@@ -60,7 +75,24 @@ const PaymentTable = ({ payments, loading, onProcess, onView, onDelete, onCreate
     const { calculatedStatus } = getChargeBreakdown(record);
     const userId = record.user_id;
     const bills = userElectricityBills[userId] || [];
-    const unpaidBills = bills.filter((b) => !b.paid && (b.share_id || b.id));
+    
+    // Get the payment cycle month (YYYY-MM format)
+    const paymentCycleMonth = record.payment_cycle_start_date 
+      ? dayjs(record.payment_cycle_start_date).format('YYYY-MM')
+      : null;
+    
+    // Filter unpaid bills that match the current payment cycle month
+    const unpaidBills = bills.filter((b) => {
+      if (b.paid || !(b.share_id || b.id)) return false;
+      
+      // Only include bills from the current payment cycle month
+      if (paymentCycleMonth && b.month) {
+        return b.month === paymentCycleMonth;
+      }
+      
+      return true; // If no month info, include it (backward compatibility)
+    });
+    
     const hasUnpaidEB = unpaidBills.length > 0;
     const isMarkingPaid = markingPaid[userId] || false;
 
