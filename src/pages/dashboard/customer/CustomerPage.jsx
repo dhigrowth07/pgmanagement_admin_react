@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Button, Card, Input, Row, Col, Typography, Select, Space } from "antd";
-import { PlusOutlined, UploadOutlined } from "@ant-design/icons";
+import { PlusOutlined, UploadOutlined, SearchOutlined } from "@ant-design/icons";
+import { Users, UserCheck, Clock, CreditCard, AlertCircle } from "lucide-react";
+import dayjs from "dayjs";
 
 import {
   fetchAllCustomers,
@@ -26,8 +28,6 @@ import {
   updateCustomerId,
 } from "../../../redux/customer/customerSlice";
 import { signupOnboardCustomer } from "../../../services/customerService";
-import { selectUser } from "../../../redux/auth/authSlice";
-import { generateCustomerPDF } from "../../../utils/pdfGenerator";
 
 import { selectAllRooms, selectAllBlocks, selectAllTariffs, fetchRoomsData } from "../../../redux/room/roomSlice";
 
@@ -59,13 +59,12 @@ const CustomerPage = () => {
   const blocks = useSelector(selectAllBlocks);
   const tariffs = useSelector(selectAllTariffs);
   const bulkImportResult = useSelector(selectBulkImportResult);
-  const user = useSelector(selectUser);
 
   const [modalState, setModalState] = useState({ type: null, data: null });
   /** @type {["full" | "roomChange", Function]} */
   const [onboardMode, setOnboardMode] = useState("full");
   const [searchTerm, setSearchTerm] = useState("");
-  const [filters, setFilters] = useState({ status: "all", room: "all", block: "all" });
+  const [filters, setFilters] = useState({ status: "all", room: "all", block: "all", rentCycle: "all" });
   const [isImportModalVisible, setIsImportModalVisible] = useState(false);
   const [advanceModalVisible, setAdvanceModalVisible] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -78,8 +77,8 @@ const CustomerPage = () => {
   const isActionLoading = customerStatus === "loading_action";
 
   useEffect(() => {
-    dispatch(/** @type {any} */ (fetchAllCustomers(undefined)));
-    dispatch(/** @type {any} */ (fetchRoomsData(undefined)));
+    dispatch(/** @type {any} */(fetchAllCustomers(undefined)));
+    dispatch(/** @type {any} */(fetchRoomsData(undefined)));
   }, [dispatch]);
 
   const filteredCustomers = useMemo(() => {
@@ -136,7 +135,9 @@ const CustomerPage = () => {
         blockMatch = customerBlockId === filterBlockId;
       }
 
-      const finalMatch = searchMatch && statusMatch && roomMatch && blockMatch;
+      const rentCycleMatch = filters.rentCycle === "all" || (filters.rentCycle === "1-5" && !!customer.joining_date && dayjs(customer.joining_date).date() <= 5);
+
+      const finalMatch = searchMatch && statusMatch && roomMatch && blockMatch && rentCycleMatch;
 
       return finalMatch;
     });
@@ -151,7 +152,7 @@ const CustomerPage = () => {
 
   const handleChangeRoom = (/** @type {any} */ { userId, roomId, bedId }) => {
     if (userId && roomId) {
-      dispatch(/** @type {any} */ (changeRoomCustomer({ userId, roomId, bedId }))).then((/** @type {any} */ res) => {
+      dispatch(/** @type {any} */(changeRoomCustomer({ userId, roomId, bedId }))).then((/** @type {any} */ res) => {
         if (!res.error) {
           closeModal();
         }
@@ -161,7 +162,8 @@ const CustomerPage = () => {
 
   const closeModal = () => setModalState({ type: null, data: null });
 
-  const handleSignupSubmit = async (/** @type {any} */ formData, /** @type {any} */ customerDataForPDF = null, /** @type {any} */ pdfResult = null) => {
+  const handleSignupSubmit = async (/** @type {any} */ formData, /** @type {any} */ customerData, /** @type {any} */ pdfResult = null) => {
+    console.log("[Signup] Submitting form for:", customerData?.name);
     setIsSignupLoading(true);
     try {
       const response = await signupOnboardCustomer(formData);
@@ -179,11 +181,11 @@ const CustomerPage = () => {
             pdfResult.doc.save(pdfResult.fileName);
             console.log("[PDF Download] PDF downloaded successfully");
             toast.success("PDF generated and downloaded successfully!");
-            } catch (/** @type {any} */ pdfError) {
-              console.error("[PDF Download] Error downloading PDF:", pdfError);
-              console.error("[PDF Download] Error stack:", pdfError?.stack);
-              toast.error("Customer created successfully, but PDF download failed.");
-            }
+          } catch (/** @type {any} */ pdfError) {
+            console.error("[PDF Download] Error downloading PDF:", pdfError);
+            console.error("[PDF Download] Error stack:", pdfError?.stack);
+            toast.error("Customer created successfully, but PDF download failed.");
+          }
         } else {
           console.warn("[PDF Download] PDF not available for download. pdfResult:", pdfResult);
           // Check if PDF was uploaded to S3 and can be downloaded from there
@@ -202,7 +204,7 @@ const CustomerPage = () => {
           }
         }
 
-        dispatch(/** @type {any} */ (fetchAllCustomers(undefined))); // Refresh customer list
+        dispatch(/** @type {any} */(fetchAllCustomers(undefined))); // Refresh customer list
         closeModal();
       } else {
         toast.error(response.data?.msg || "Failed to create customer");
@@ -217,9 +219,9 @@ const CustomerPage = () => {
 
   const handleOnboardSubmit = (/** @type {any} */ payload) => {
     if (payload.userId) {
-      dispatch(/** @type {any} */ (updateCustomer(payload))).then((/** @type {any} */ res) => !res.error && closeModal());
+      dispatch(/** @type {any} */(updateCustomer(payload))).then((/** @type {any} */ res) => !res.error && closeModal());
     } else {
-      dispatch(/** @type {any} */ (addNewCustomer(payload))).then((/** @type {any} */ res) => !res.error && closeModal());
+      dispatch(/** @type {any} */(addNewCustomer(payload))).then((/** @type {any} */ res) => !res.error && closeModal());
     }
   };
 
@@ -227,11 +229,11 @@ const CustomerPage = () => {
     if (!modalState.data) return;
     const data = /** @type {any} */ (modalState.data);
     if (modalState.type === "delete") {
-      dispatch(/** @type {any} */ (deleteCustomer(data.user_id)));
+      dispatch(/** @type {any} */(deleteCustomer(data.user_id)));
     } else if (modalState.type === "removeFromRoom") {
-      dispatch(/** @type {any} */ (removeUserFromRoom(data.user_id)));
+      dispatch(/** @type {any} */(removeUserFromRoom(data.user_id)));
     } else if (modalState.type === "cancelVacation") {
-      dispatch(/** @type {any} */ (cancelVacation(data.user_id)));
+      dispatch(/** @type {any} */(cancelVacation(data.user_id)));
     }
     closeModal();
   };
@@ -239,7 +241,7 @@ const CustomerPage = () => {
   const handleVacateSubmit = (/** @type {any} */ vacatingDate) => {
     if (!modalState.data) return;
     const data = /** @type {any} */ (modalState.data);
-    dispatch(/** @type {any} */ (vacateUserRoom({ userId: data.user_id, vacatingDate }))).then((/** @type {any} */ res) => {
+    dispatch(/** @type {any} */(vacateUserRoom({ userId: data.user_id, vacatingDate }))).then((/** @type {any} */ res) => {
       if (!res.error) {
         closeModal();
       }
@@ -249,16 +251,16 @@ const CustomerPage = () => {
   const handleTariffSubmit = (/** @type {any} */ { tariff_id }) => {
     if (!modalState.data) return;
     const data = /** @type {any} */ (modalState.data);
-    dispatch(/** @type {any} */ (updateUserTariff({ userId: data.user_id, tariffId: tariff_id }))).then((/** @type {any} */ res) => !res.error && closeModal());
+    dispatch(/** @type {any} */(updateUserTariff({ userId: data.user_id, tariffId: tariff_id }))).then((/** @type {any} */ res) => !res.error && closeModal());
   };
 
   const handleChangePassword = (/** @type {any} */ newPassword) => {
     if (!modalState.data) return;
     const data = /** @type {any} */ (modalState.data);
-    dispatch(/** @type {any} */ (changeCustomerPassword({ userId: data.user_id, newPassword }))).then((/** @type {any} */ res) => !res.error && closeModal());
+    dispatch(/** @type {any} */(changeCustomerPassword({ userId: data.user_id, newPassword }))).then((/** @type {any} */ res) => !res.error && closeModal());
   };
 
-  const handleBulkImportSubmit = (/** @type {any[]} */ users) => dispatch(/** @type {any} */ (bulkImportCustomers(users)));
+  const handleBulkImportSubmit = (/** @type {any[]} */ users) => dispatch(/** @type {any} */(bulkImportCustomers(users)));
   const closeImportModal = () => {
     setIsImportModalVisible(false);
     dispatch(clearBulkImportResult());
@@ -271,7 +273,7 @@ const CustomerPage = () => {
   const handleAdminProfileUpdate = (/** @type {any} */ formData) => {
     const data = /** @type {any} */ (modalState.data);
     if (data?.user_id) {
-      dispatch(/** @type {any} */ (adminUpdateCustomerProfileThunk({ userId: data.user_id, formData }))).then((/** @type {any} */ res) => {
+      dispatch(/** @type {any} */(adminUpdateCustomerProfileThunk({ userId: data.user_id, formData }))).then((/** @type {any} */ res) => {
         if (!res.error) {
           const payload = /** @type {any} */ (res.payload);
           toast.success(payload?.msg || "Customer profile updated successfully!");
@@ -286,13 +288,13 @@ const CustomerPage = () => {
 
   const handleActivateUser = (/** @type {any} */ customer) => {
     if (customer?.user_id) {
-      dispatch(/** @type {any} */ (activateCustomer(customer.user_id)));
+      dispatch(/** @type {any} */(activateCustomer(customer.user_id)));
     }
   };
 
   const handleRejectUser = (/** @type {any} */ customer) => {
     if (customer?.user_id) {
-      dispatch(/** @type {any} */ (rejectCustomer(customer.user_id)));
+      dispatch(/** @type {any} */(rejectCustomer(customer.user_id)));
     }
   };
 
@@ -309,12 +311,33 @@ const CustomerPage = () => {
   const handleUpdateCustomerId = (/** @type {any} */ customerId) => {
     if (!modalState.data?.user_id) return;
     const data = /** @type {any} */ (modalState.data);
-    dispatch(/** @type {any} */ (updateCustomerId({ userId: data.user_id, customerId }))).then((/** @type {any} */ res) => {
+    dispatch(/** @type {any} */(updateCustomerId({ userId: data.user_id, customerId }))).then((/** @type {any} */ res) => {
       if (!res.error) {
         closeModal();
       }
     });
   };
+
+  const stats = useMemo(() => {
+    const total = customers.length;
+    const active = customers.filter((c) => c.is_active && !!c.room_id).length;
+    const rentDue1_5 = customers.filter((c) => {
+      // Logic for rent due in first 5 days: joining day is between 1 and 5
+      if (!c.is_active || !c.room_id || !c.joining_date) return false;
+      const day = dayjs(c.joining_date).date();
+      return day >= 1 && day <= 5;
+    }).length;
+    const pending = customers.filter((c) => (c.registration_status || "pending") === "pending").length;
+
+    return { total, active, rentDue1_5, pending };
+  }, [customers]);
+
+  const statCards = [
+    { label: "Total Customers", value: stats.total, icon: Users, color: "text-blue-600", bgColor: "bg-blue-100" },
+    { label: "Active Residents", value: stats.active, icon: UserCheck, color: "text-green-600", bgColor: "bg-green-100" },
+    { label: "Rent Due (1st-5th)", value: stats.rentDue1_5, icon: CreditCard, color: "text-purple-600", bgColor: "bg-purple-100" },
+    { label: "Pending Approval", value: stats.pending, icon: Clock, color: "text-orange-600", bgColor: "bg-orange-100" },
+  ];
 
   return (
     <Card bordered={false}>
@@ -335,6 +358,37 @@ const CustomerPage = () => {
           </Space>
         </Col>
       </Row>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        {statCards.map((stat) => (
+          <div
+            key={stat.label}
+            className={`flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:border-blue-400 transition-colors ${filters.status === stat.label ? 'border-blue-500 bg-blue-50' : ''}`}
+            onClick={() => {
+              if (stat.label === "Rent Due (1st-5th)") {
+                handleFilterChange("rentCycle", filters.rentCycle === "1-5" ? "all" : "1-5");
+              } else if (stat.label === "Active Residents") {
+                handleFilterChange("status", filters.status === "Active" ? "all" : "Active");
+                handleFilterChange("room", "assigned");
+              } else if (stat.label === "Pending Approval") {
+                handleFilterChange("status", "all");
+                // Actually, registration_status is not directly in the status filter dropdown, 
+                // but we can filter by derived status if needed. 
+                // For now just toggle common ones.
+              }
+            }}
+          >
+            <div>
+              <p className="text-sm text-gray-500 font-medium">{stat.label}</p>
+              <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+            </div>
+            <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+              <stat.icon className={`h-6 w-6 ${stat.color}`} />
+            </div>
+          </div>
+        ))}
+      </div>
 
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} sm={24} md={8}>
@@ -380,6 +434,18 @@ const CustomerPage = () => {
                 <Option value="Inactive">Inactive</Option>
                 <Option value="Vacated">Vacated</Option>
                 <Option value="Vacating">Vacating</Option>
+              </Select>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Select
+                value={filters.rentCycle}
+                style={{ width: "100%" }}
+                onChange={(val) => handleFilterChange("rentCycle", val)}
+                placeholder="Rent Cycle"
+                allowClear
+              >
+                <Option value="all">All Cycles</Option>
+                <Option value="1-5">Rent Due (1st-5th)</Option>
               </Select>
             </Col>
           </Row>
@@ -457,7 +523,7 @@ const CustomerPage = () => {
           const { amount } = values;
           if (selectedCustomer) {
             const customer = /** @type {any} */ (selectedCustomer);
-            dispatch(/** @type {any} */ (updateAdvancePayment({ userId: customer.user_id, data: { amount } }))).then((/** @type {any} */ res) => {
+            dispatch(/** @type {any} */(updateAdvancePayment({ userId: customer.user_id, data: { amount } }))).then((/** @type {any} */ res) => {
               if (!res.error) {
                 setAdvanceModalVisible(false);
                 setSelectedCustomer(null);
@@ -486,8 +552,8 @@ const CustomerPage = () => {
           modalState.type === "delete"
             ? "Are you sure you want to permanently delete this customer?"
             : modalState.type === "cancelVacation"
-            ? "Are you sure you want to cancel this customer's scheduled vacation? They will remain in their room."
-            : "Are you sure you want to remove this customer from their room? This will also unassign their tariff."
+              ? "Are you sure you want to cancel this customer's scheduled vacation? They will remain in their room."
+              : "Are you sure you want to remove this customer from their room? This will also unassign their tariff."
         }
         okText={modalState.type === "delete" ? "Delete" : modalState.type === "cancelVacation" ? "Cancel Vacation" : "Remove"}
       />

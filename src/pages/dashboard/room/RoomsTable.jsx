@@ -8,8 +8,14 @@ import dayjs from "dayjs";
 
 /** @param {any} room */
 const getRoomStatus = (room) => {
-  if (room.current_occupancy >= room.capacity) {
-    return { text: "Occupied", color: "green" };
+  const capacity = parseInt(room.total_beds) || room.capacity || 1;
+  const occupancy = parseInt(room.current_occupancy) || 0;
+
+  if (occupancy >= capacity) {
+    return { text: "Fully Occupied", color: "green" };
+  }
+  if (occupancy > 0) {
+    return { text: "Partial", color: "orange" };
   }
   return { text: "Vacant", color: "blue" };
 };
@@ -243,7 +249,7 @@ const RoomsTable = ({ blocks, onEditRoom, onDeleteRoom, onEditBlock, onDeleteBlo
   const handleViewRoom = async (room) => {
     setViewRoomModal({ visible: true, room: null, loading: true });
     try {
-      const result = await dispatch(/** @type {any} */ (getRoomById(room.room_id)));
+      const result = await dispatch(/** @type {any} */(getRoomById(room.room_id)));
       if (result.payload && !result.error) {
         setViewRoomModal({ visible: true, room: result.payload, loading: false });
       } else {
@@ -266,13 +272,19 @@ const RoomsTable = ({ blocks, onEditRoom, onDeleteRoom, onEditBlock, onDeleteBlo
   return (
     <div className="space-y-6">
       {blocks.map((block) => {
-        const occupiedCount = block.rooms.filter((/** @type {any} */ r) => r.current_occupancy >= (parseInt(r.total_beds) || r.capacity || 0)).length;
-        const vacantCount = block.rooms.length - occupiedCount;
-        const totalBeds = block.rooms.reduce((/** @type {number} */ sum, /** @type {any} */ room) => sum + (parseInt(room.total_beds) || room.capacity || 0), 0);
-        const occupiedBeds = block.rooms.reduce((/** @type {number} */ sum, /** @type {any} */ room) => sum + (parseInt(room.occupied_beds) || Math.min(room.current_occupancy || 0, parseInt(room.total_beds) || room.capacity || 0)), 0);
+        const totalRooms = block.rooms.length;
+        const fullRooms = block.rooms.filter((r) => {
+          const capacity = parseInt(r.total_beds) || r.capacity || 0;
+          const occupancy = parseInt(r.current_occupancy) || 0;
+          return occupancy >= capacity;
+        }).length;
+        const emptyRooms = block.rooms.filter((r) => (parseInt(r.current_occupancy) || 0) === 0).length;
+        const partialRooms = totalRooms - fullRooms - emptyRooms;
+
+        const totalBeds = block.rooms.reduce((sum, room) => sum + (parseInt(room.total_beds) || room.capacity || 0), 0);
+        const occupiedBeds = block.rooms.reduce((sum, room) => sum + (parseInt(room.occupied_beds) || parseInt(room.current_occupancy) || 0), 0);
         const vacantBeds = Math.max(totalBeds - occupiedBeds, 0);
 
-        const totalRooms = block.rooms.length;
         const visibleCount = visibleRoomsPerBlock[block.block_id] || 16;
         const roomsToShow = block.rooms.slice(0, visibleCount);
 
@@ -288,14 +300,15 @@ const RoomsTable = ({ blocks, onEditRoom, onDeleteRoom, onEditBlock, onDeleteBlo
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                  <span className="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">{occupiedCount} Occupied</span>
-                  <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">{vacantCount} Vacant</span>
+                  <span className="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">{fullRooms} Full</span>
+                  <span className="px-3 py-1 bg-orange-100 text-orange-800 text-sm font-medium rounded-full">{partialRooms} Partial</span>
+                  <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">{emptyRooms} Empty</span>
                   {/* Only show dropdown for real blocks (not virtual unassigned block) */}
                   {block.block_id !== "unassigned" && (
                     <Dropdown
                       overlay={
                         <Menu>
-                          <Menu.Item key="edit" icon={<EditOutlined />} onClick={() => onEditBlock(/** @type {any} */ (block))}>
+                          <Menu.Item key="edit" icon={<EditOutlined />} onClick={() => onEditBlock(/** @type {any} */(block))}>
                             Edit Block
                           </Menu.Item>
                           <Menu.Item key="review" icon={<MapIcon className="w-3 h-3" />} onClick={() => onOpenReview(block)}>

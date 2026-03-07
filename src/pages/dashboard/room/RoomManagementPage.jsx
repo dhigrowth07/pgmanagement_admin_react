@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Button, Card, Input, Row, Col, Typography, Select, Spin, Table, Space, Modal } from "antd";
 import { PlusOutlined, SearchOutlined } from "@ant-design/icons";
-import { Hotel, UserCheck, DoorOpen } from "lucide-react";
+import { Hotel, UserCheck, DoorOpen, BedDouble } from "lucide-react";
 import {
   fetchRoomsData,
   addBlock,
@@ -52,7 +52,7 @@ const ManagementModal = ({ title, columns, data, onAddItem, onEditItem, onDelete
       render: (_, record) => (
         <Space size="middle">
           <a onClick={() => onEditItem(record)}>Edit</a>
-          {/* <a onClick={() => onDeleteItem(record)} style={{ color: 'red' }}>Delete</a> */}
+          <a onClick={() => onDeleteItem(record)} style={{ color: 'red' }}>Delete</a>
         </Space>
       ),
     },
@@ -212,7 +212,16 @@ const RoomManagementPage = () => {
       blockData = blockData
         .map((b) => ({
           ...b,
-          rooms: b.rooms.filter((r) => (r.current_occupancy >= r.capacity ? "occupied" : "vacant") === filters.status),
+          rooms: b.rooms.filter((r) => {
+            const capacity = parseInt(r.total_beds) || r.capacity || 0;
+            const occupancy = parseInt(r.current_occupancy) || 0;
+            const status = occupancy >= capacity ? "occupied" : occupancy > 0 ? "partial" : "vacant";
+
+            if (filters.status === "occupied") return status === "occupied";
+            if (filters.status === "partial") return status === "partial";
+            if (filters.status === "vacant") return status === "vacant";
+            return true;
+          }),
         }))
         .filter((b) => b.rooms.length > 0);
     }
@@ -221,14 +230,22 @@ const RoomManagementPage = () => {
 
   const stats = useMemo(() => {
     const totalRooms = rooms.length;
-    const occupiedRooms = rooms.filter((r) => r.current_occupancy >= r.capacity).length;
-    return { totalRooms, occupiedRooms, vacantRooms: totalRooms - occupiedRooms };
+    const totalBeds = rooms.reduce((/** @type {any} */ sum, /** @type {any} */ r) => sum + (parseInt(r.total_beds) || r.capacity || 0), 0);
+    const occupiedBeds = rooms.reduce((/** @type {any} */ sum, /** @type {any} */ r) => sum + (parseInt(r.occupied_beds) || parseInt(r.current_occupancy) || 0), 0);
+    const vacantBeds = totalBeds - occupiedBeds;
+
+    const fullRooms = rooms.filter((/** @type {any} */ r) => (parseInt(r.current_occupancy) || 0) >= (parseInt(r.total_beds) || r.capacity || 0)).length;
+    const emptyRooms = rooms.filter((/** @type {any} */ r) => (parseInt(r.current_occupancy) || 0) === 0).length;
+    const partialRooms = totalRooms - fullRooms - emptyRooms;
+
+    return { totalRooms, totalBeds, occupiedBeds, vacantBeds, fullRooms, emptyRooms, partialRooms };
   }, [rooms]);
 
   const roomStats = [
     { label: "Total Rooms", value: stats.totalRooms, icon: Hotel, color: "text-blue-600", bgColor: "bg-blue-100" },
-    { label: "Full Occupied Rooms", value: stats.occupiedRooms, icon: UserCheck, color: "text-green-600", bgColor: "bg-green-100" },
-    { label: "Vacant Rooms", value: stats.vacantRooms, icon: DoorOpen, color: "text-orange-600", bgColor: "bg-orange-100" },
+    { label: "Total Beds", value: stats.totalBeds, icon: BedDouble, color: "text-purple-600", bgColor: "bg-purple-100" },
+    { label: "Occupied Beds", value: stats.occupiedBeds, icon: UserCheck, color: "text-green-600", bgColor: "bg-green-100" },
+    { label: "Vacant Beds", value: stats.vacantBeds, icon: DoorOpen, color: "text-orange-600", bgColor: "bg-orange-100" },
   ];
 
   const tariffColumns = [
@@ -280,7 +297,7 @@ const RoomManagementPage = () => {
       </Row>
 
       {/* Room Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-5">
         {roomStats.map((stat) => (
           <div key={stat.label} className="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-gray-200">
             <div>
@@ -304,20 +321,21 @@ const RoomManagementPage = () => {
             <Col xs={24} sm={12} md={8}>
               <Select value={filters.block} onChange={(val) => handleFilterChange("block", val)} style={{ width: "100%" }}>
                 <Option value="all">All Blocks</Option>
-                 {blocks.map((b) => (
-                   <Option key={b.block_id} value={b.block_id}>
-                     {b.block_name}
-                   </Option>
-                 ))}
-                 {/* Show unassigned option only if rooms without block_id exist */}
-                 {rooms.some((r) => !r.block_id) && <Option value="unassigned">Unassigned</Option>}
+                {blocks.map((b) => (
+                  <Option key={b.block_id} value={b.block_id}>
+                    {b.block_name}
+                  </Option>
+                ))}
+                {/* Show unassigned option only if rooms without block_id exist */}
+                {rooms.some((r) => !r.block_id) && <Option value="unassigned">Unassigned</Option>}
               </Select>
             </Col>
             <Col xs={24} sm={12} md={8}>
               <Select value={filters.status} onChange={(val) => handleFilterChange("status", val)} style={{ width: "100%" }}>
                 <Option value="all">All Status</Option>
-                <Option value="vacant">Vacant</Option>
-                <Option value="occupied">Occupied</Option>
+                <Option value="vacant">Vacant (Empty)</Option>
+                <Option value="partial">Partially Occupied</Option>
+                <Option value="occupied">Fully Occupied</Option>
               </Select>
             </Col>
           </Row>
@@ -406,7 +424,11 @@ const RoomManagementPage = () => {
         onCancel={closeFormModal}
         onConfirm={handleConfirmDelete}
         title="Confirm Deletion"
-        content="Are you sure? This action might not be reversible."
+        content={
+          formModal.type === "deleteTariff"
+            ? "Are you sure? This will have possibility to affect your payments."
+            : "Are you sure? This action might not be reversible."
+        }
       />
       <BedManagementModal visible={bedModal.visible} onCancel={closeBedModal} room={bedModal.room} />
     </Card>

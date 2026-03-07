@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Form, Input, Button, DatePicker, Select, Upload, Alert, Typography, Row, Col, message, Checkbox, InputNumber } from "antd";
+import { Form, Input, Button, DatePicker, Select, Upload, Alert, Typography, Row, Col, message, Checkbox, InputNumber, Modal } from "antd";
 import { UploadOutlined, CheckCircleOutlined, MailOutlined, PhoneOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useSearchParams } from "react-router-dom";
@@ -41,6 +41,7 @@ const UserOnboardPage2 = () => {
   const [selectedRoomId, setSelectedRoomId] = useState(null);
   /** @type {[Array<any>, Function]} */
   const [customFields, setCustomFields] = useState([]);
+  const [isTermsModalVisible, setIsTermsModalVisible] = useState(false);
 
   useEffect(() => {
     // Read tenant_id and admin_id from URL query parameters
@@ -241,7 +242,16 @@ const UserOnboardPage2 = () => {
     if (values.profile_image && values.profile_image.length > 0) {
       const fileObj = values.profile_image[0].originFileObj || values.profile_image[0];
       if (fileObj) {
-        formData.append("profile_image", fileObj);
+        try {
+          // Resize profile image to reduce payload size (max 800x800, 0.8 quality)
+          // This prevents network errors on mobile devices with high-res cameras
+          const resizedProfileImage = await resizeSignatureImage(fileObj, 800, 800, 0.8);
+          formData.append("profile_image", resizedProfileImage);
+          console.log("[UserOnboard] Profile image resized:", resizedProfileImage.size, "bytes");
+        } catch (resizeError) {
+          console.error("Failed to resize profile image, using original:", resizeError);
+          formData.append("profile_image", fileObj);
+        }
       }
     }
 
@@ -479,9 +489,9 @@ const UserOnboardPage2 = () => {
             <Input placeholder="Mobile number" />
           </Form.Item>
 
-          <Form.Item 
-            name="dob" 
-            label="Date of Birth" 
+          <Form.Item
+            name="dob"
+            label="Date of Birth"
             rules={[
               ...dobRules,
               {
@@ -503,12 +513,12 @@ const UserOnboardPage2 = () => {
               },
             ]}
           >
-            <DatePicker 
-              format="DD-MM-YYYY" 
-              style={{ width: "100%" }} 
+            <DatePicker
+              format="DD-MM-YYYY"
+              style={{ width: "100%" }}
               placeholder="Select your date of birth"
               defaultPickerValue={dayjs().subtract(18, "year")}
-              disabledDate={(current) => current && current >= dayjs().startOf("day")} 
+              disabledDate={(current) => current && current >= dayjs().startOf("day")}
             />
           </Form.Item>
 
@@ -886,8 +896,8 @@ const UserOnboardPage2 = () => {
                       field.field_type === "checkbox" && field.options
                         ? undefined
                         : field.field_type === "number"
-                        ? (value) => (value === null || value === undefined ? undefined : Number(value))
-                        : undefined
+                          ? (value) => (value === null || value === undefined ? undefined : Number(value))
+                          : undefined
                     }
                   >
                     {fieldComponent}
@@ -897,6 +907,29 @@ const UserOnboardPage2 = () => {
             </>
           )}
 
+          <Form.Item
+            name="acceptTerms"
+            valuePropName="checked"
+            rules={[
+              {
+                validator: (_, value) => (value ? Promise.resolve() : Promise.reject(new Error("Should accept terms and conditions"))),
+              },
+            ]}
+          >
+            <Checkbox>
+              I agree to the{" "}
+              <span
+                style={{ color: "#1677ff", cursor: "pointer", textDecoration: "underline" }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setIsTermsModalVisible(true);
+                }}
+              >
+                terms and conditions
+              </span>
+            </Checkbox>
+          </Form.Item>
+
           <Form.Item style={{ marginTop: 16 }}>
             <Button type="primary" htmlType="submit" loading={submitting} className="w-full">
               {submitting ? "Submitting..." : "Submit Onboarding Request"}
@@ -904,6 +937,25 @@ const UserOnboardPage2 = () => {
           </Form.Item>
         </Form>
       </div>
+
+      <Modal
+        title={`${tenantName} - Terms and Conditions`}
+        open={isTermsModalVisible}
+        onOk={() => setIsTermsModalVisible(false)}
+        onCancel={() => setIsTermsModalVisible(false)}
+        width={800}
+        footer={[
+          <Button key="close" type="primary" onClick={() => setIsTermsModalVisible(false)}>
+            Close
+          </Button>,
+        ]}
+      >
+        <div
+          className="terms-conditions-content"
+          style={{ maxHeight: "60vh", overflowY: "auto", padding: "10px" }}
+          dangerouslySetInnerHTML={{ __html: termsAndConditions || "<p>No terms and conditions provided.</p>" }}
+        />
+      </Modal>
     </div>
   );
 };
