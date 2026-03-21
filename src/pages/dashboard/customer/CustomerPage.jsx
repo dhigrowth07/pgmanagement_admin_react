@@ -138,7 +138,8 @@ const CustomerPage = () => {
         blockMatch = customerBlockId === filterBlockId;
       }
 
-      const rentCycleMatch = filters.rentCycle === "all" || (filters.rentCycle === "1-5" && !!customer.joining_date && dayjs(customer.joining_date).date() <= 5);
+      const rentCycleMatch =
+        filters.rentCycle === "all" || (filters.rentCycle === "1-5" && customer.is_active && !!customer.room_id && !!customer.joining_date && dayjs(customer.joining_date).date() <= 5);
 
       const finalMatch = searchMatch && statusMatch && roomMatch && blockMatch && rentCycleMatch;
 
