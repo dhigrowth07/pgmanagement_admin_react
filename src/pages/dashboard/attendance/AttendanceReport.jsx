@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Table, DatePicker, Button, Card, Progress, Tag } from "antd";
 import { useDispatch, useSelector } from "react-redux";
-import { 
-  fetchMonthlyAttendanceReport, 
+import {
+  fetchMonthlyAttendanceReport,
   selectMonthlyAttendanceReport,
   selectAttendanceStatus
 } from "../../../redux/attendance/attendanceSlice";
@@ -15,7 +15,7 @@ const AttendanceReport = () => {
   const report = useSelector(selectMonthlyAttendanceReport);
   const status = useSelector(selectAttendanceStatus);
   const loading = status === "loading";
-  
+
   const [selectedMonth, setSelectedMonth] = useState(dayjs());
 
   useEffect(() => {
@@ -31,22 +31,22 @@ const AttendanceReport = () => {
   };
 
   const handleExport = () => {
-     if (!report || report.length === 0) return;
-     
-     const worksheet = XLSX.utils.json_to_sheet(report.map(item => ({
-         "User Name": item.user_name,
-         "Room": item.room_number || "N/A",
-         "Total Days": item.total_days,
-         "Present": item.present_days,
-         "Absent": item.absent_days,
-         "Missed": item.missed_days,
-         "Excused": item.excused_days,
-         "Percentage": `${item.attendance_percentage}%`
-     })));
-     
-     const workbook = XLSX.utils.book_new();
-     XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance Report");
-     XLSX.writeFile(workbook, `Attendance_Report_${selectedMonth.format("MMM_YYYY")}.xlsx`);
+    if (!report || report.length === 0) return;
+
+    const worksheet = XLSX.utils.json_to_sheet(report.map(item => ({
+      "User Name": item.user_name,
+      "Room": item.room_number || "N/A",
+      "Total Days": item.total_days,
+      "Present": item.present_days,
+      "Absent": item.absent_days,
+      "Missed": item.missed_days,
+      "Excused": item.excused_days,
+      "Percentage": item.attendance_percentage !== null ? `${item.attendance_percentage}%` : "N/A"
+    })));
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance Report");
+    XLSX.writeFile(workbook, `Attendance_Report_${selectedMonth.format("MMM_YYYY")}.xlsx`);
   };
 
   const columns = [
@@ -76,10 +76,25 @@ const AttendanceReport = () => {
       key: "summary",
       width: 150,
       render: (_, record) => (
-        <div className="flex gap-2 text-xs">
-          <span className="text-green-600 font-semibold">{record.present_days} P</span>
-          <span className="text-red-600 font-semibold">{record.absent_days} A</span>
-          <span className="text-orange-500 font-semibold">{record.missed_days} M</span>
+        <div className="flex gap-3 py-1">
+          <div className="flex flex-col">
+            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Pres</span>
+            <span className={`text-sm font-bold ${record.present_days > 0 ? "text-green-600" : "text-gray-300"}`}>
+              {record.present_days}
+            </span>
+          </div>
+          <div className="flex flex-col border-l pl-3">
+            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Abs</span>
+            <span className={`text-sm font-bold ${record.absent_days > 0 ? "text-red-600" : "text-gray-300"}`}>
+              {record.absent_days}
+            </span>
+          </div>
+          <div className="flex flex-col border-l pl-3">
+            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Mis</span>
+            <span className={`text-sm font-bold ${record.missed_days > 0 ? "text-orange-500" : "text-gray-300"}`}>
+              {record.missed_days}
+            </span>
+          </div>
         </div>
       ),
     },
@@ -89,17 +104,25 @@ const AttendanceReport = () => {
       key: "attendance_percentage",
       width: 180,
       render: (percent) => {
+        if (percent === null) {
+          return <span className="text-gray-400 text-xs italic">No data</span>;
+        }
+        const displayPercent = parseFloat(percent);
         let status = "normal";
-        if (percent >= 90) status = "success";
-        else if (percent < 75) status = "exception";
-        
+        if (displayPercent >= 90) status = "success";
+        else if (displayPercent > 0 && displayPercent < 75) status = "exception";
+
         return (
-            <div style={{ width: 150 }}>
-                <Progress percent={percent} size="small" status={status} />
-            </div>
+          <div style={{ width: 150 }}>
+            <Progress
+              percent={displayPercent}
+              size="small"
+              status={status === "normal" && displayPercent === 0 ? undefined : status}
+            />
+          </div>
         );
       },
-      sorter: (a, b) => a.attendance_percentage - b.attendance_percentage,
+      sorter: (a, b) => (parseFloat(a.attendance_percentage) || 0) - (parseFloat(b.attendance_percentage) || 0),
     },
   ];
 
@@ -107,39 +130,39 @@ const AttendanceReport = () => {
     <div>
       <Card className="mb-4 shadow-sm border-0">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-             <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full sm:w-auto">
-                <DatePicker 
-                    picker="month" 
-                    value={selectedMonth}
-                    onChange={setSelectedMonth}
-                    allowClear={false}
-                    className="w-full sm:w-auto"
-                />
-                <Button 
-                    type="primary" 
-                    icon={<Search size={16} />} 
-                    onClick={fetchReport}
-                    className="w-full sm:w-auto"
-                >
-                    Get Report
-                </Button>
-            </div>
-            
-            {/* Conditional render only if we confirm xlsx is installed, 
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full sm:w-auto">
+            <DatePicker
+              picker="month"
+              value={selectedMonth}
+              onChange={setSelectedMonth}
+              allowClear={false}
+              className="w-full sm:w-auto"
+            />
+            <Button
+              type="primary"
+              icon={<Search size={16} />}
+              onClick={fetchReport}
+              className="w-full sm:w-auto"
+            >
+              Get Report
+            </Button>
+          </div>
+
+          {/* Conditional render only if we confirm xlsx is installed, 
                 but for now I'll check package.json or assume it's not there and hide it 
                 or just keep it if user asked for "like feature" usually implies export.
                 For safety, I'll comment out the export button call logic to avoid runtime crash 
                 if xlsx is missing, unless I explicitly check. 
                 Wait, I can't easily check. I'll include the button but make it safe. 
             */}
-             <Button 
-               icon={<Download size={16} />} 
-               onClick={handleExport} 
-               disabled={!report?.length}
-               className="w-full sm:w-auto"
-             >
-                Export to Excel
-            </Button>
+          <Button
+            icon={<Download size={16} />}
+            onClick={handleExport}
+            disabled={!report?.length}
+            className="w-full sm:w-auto"
+          >
+            Export to Excel
+          </Button>
         </div>
       </Card>
 
@@ -151,7 +174,7 @@ const AttendanceReport = () => {
         pagination={{ pageSize: 20 }}
         scroll={{ x: 700 }} // Enable horizontal scroll on mobile
       />
-      
+
       {/* 
          Note: If xlsx is not installed, this will throw. 
          Ideally I'd check dependencies first.

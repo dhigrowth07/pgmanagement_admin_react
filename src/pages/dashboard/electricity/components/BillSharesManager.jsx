@@ -99,38 +99,38 @@ const BillSharesManager = () => {
   };
 
   const columns = [
-    { 
-      title: 'User', 
-      dataIndex: 'user_name', 
+    {
+      title: 'User',
+      dataIndex: 'user_name',
       key: 'user_name',
       width: 150,
       fixed: 'left' // Keep user visible on scroll
     },
-    { 
-      title: 'Email', 
-      dataIndex: 'user_email', 
+    {
+      title: 'Email',
+      dataIndex: 'user_email',
       key: 'user_email',
       responsive: ['md'], // Hide on mobile (screens < 768px)
       width: 200
     },
-    { 
-      title: 'Share Amount', 
-      dataIndex: 'share_amount', 
-      key: 'share_amount', 
+    {
+      title: 'Share Amount',
+      dataIndex: 'share_amount',
+      key: 'share_amount',
       render: (v) => `₹${Number(v).toFixed(2)}`,
       width: 120
     },
-    { 
-      title: 'Paid', 
-      dataIndex: 'paid', 
-      key: 'paid', 
+    {
+      title: 'Paid',
+      dataIndex: 'paid',
+      key: 'paid',
       render: (paid) => paid ? 'Yes' : 'No',
       width: 80
     },
-    { 
-      title: 'Manual Edit', 
-      dataIndex: 'is_manually_edited', 
-      key: 'is_manually_edited', 
+    {
+      title: 'Manual Edit',
+      dataIndex: 'is_manually_edited',
+      key: 'is_manually_edited',
       render: (edited) => edited ? 'Yes' : 'No',
       responsive: ['lg'], // Hide on screens < 1024px
       width: 100
@@ -274,10 +274,14 @@ const BillSharesManager = () => {
           <Form.Item
             name="share_amount"
             label="Share Amount"
-            rules={[{ required: true, message: 'Please enter share amount' }]}
+            rules={[
+              { required: true, message: 'Please enter share amount' },
+              { type: 'number', max: selectedBill?.amount || 10000, message: `Amount cannot exceed bill total of ₹${selectedBill?.amount || 10000}` }
+            ]}
           >
             <InputNumber
               min={0}
+              max={selectedBill?.amount || 10000}
               step={0.01}
               precision={2}
               style={{ width: '100%' }}
@@ -318,10 +322,14 @@ const BillSharesManager = () => {
           <Form.Item
             name="share_amount"
             label="Share Amount"
-            rules={[{ required: true, message: 'Please enter share amount' }]}
+            rules={[
+              { required: true, message: 'Please enter share amount' },
+              { type: 'number', max: selectedBill?.amount || 10000, message: `Amount cannot exceed bill total of ₹${selectedBill?.amount || 10000}` }
+            ]}
           >
             <InputNumber
               min={0}
+              max={selectedBill?.amount || 10000}
               step={0.01}
               precision={2}
               style={{ width: '100%' }}

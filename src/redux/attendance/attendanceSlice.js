@@ -79,7 +79,7 @@ export const fetchAttendanceStatistics = createAsyncThunk(
   async (params, { rejectWithValue }) => {
     try {
       const response = await attendanceService.getStatistics(params);
-      return response.data.statistics;
+      return response.data;
     } catch (error) {
       return rejectWithValue(handleApiError(error));
     }
@@ -91,7 +91,7 @@ export const fetchMonthlyAttendanceReport = createAsyncThunk(
   async ({ month, year }, { rejectWithValue }) => {
     try {
       const response = await attendanceService.getMonthlyReport(month, year);
-      return response.data.report;
+      return response.data.users;
     } catch (error) {
       return rejectWithValue(handleApiError(error));
     }
@@ -134,8 +134,16 @@ const attendanceSlice = createSlice({
         state.error = action.payload?.msg;
       })
       // Statistics
+      .addCase(fetchAttendanceStatistics.pending, (state) => {
+        state.status = "loading";
+      })
       .addCase(fetchAttendanceStatistics.fulfilled, (state, action) => {
+        state.status = "succeeded";
         state.statistics = action.payload;
+      })
+      .addCase(fetchAttendanceStatistics.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload?.msg;
       })
       // Monthly Report
       .addCase(fetchMonthlyAttendanceReport.pending, (state) => {
@@ -158,5 +166,6 @@ export const selectAttendanceConfig = (state) => state.attendance.config;
 export const selectAttendanceStatistics = (state) => state.attendance.statistics;
 export const selectMonthlyAttendanceReport = (state) => state.attendance.monthlyReport;
 export const selectAttendanceStatus = (state) => state.attendance.status;
+export const selectAttendanceLoading = (state) => state.attendance.status === "loading";
 
 export default attendanceSlice.reducer;

@@ -22,29 +22,29 @@ const FinalizedBillsTable = () => {
   };
 
   const columns = [
-    { 
-      title: 'Block', 
-      dataIndex: 'block_name', 
+    {
+      title: 'Block',
+      dataIndex: 'block_name',
       key: 'block_name',
       responsive: ['md'], // Hide on mobile (screens < 768px)
       width: 150
     },
-    { 
-      title: 'Room', 
-      dataIndex: 'room_number', 
+    {
+      title: 'Room',
+      dataIndex: 'room_number',
       key: 'room_number',
       width: 100
     },
-    { 
-      title: 'Month', 
-      dataIndex: 'month', 
+    {
+      title: 'Month',
+      dataIndex: 'month',
       key: 'month',
       width: 120
     },
-    { 
-      title: 'Amount', 
-      dataIndex: 'amount', 
-      key: 'amount', 
+    {
+      title: 'Amount',
+      dataIndex: 'amount',
+      key: 'amount',
       render: (v) => `₹${Number(v).toFixed(2)}`,
       width: 120
     },

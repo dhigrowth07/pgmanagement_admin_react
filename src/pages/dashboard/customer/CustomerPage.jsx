@@ -105,6 +105,9 @@ const CustomerPage = () => {
           const hasNotVacated = !customer.vacated_date; // No past vacation date
 
           statusMatch = hasRoom && isActive && hasNotVacated;
+        } else if (filterStatus === "Pending") {
+          // Special handling for Pending - match registration_status or derive from is_active/room_id
+          statusMatch = (customer.registration_status || "pending").toLowerCase() === "pending";
         } else {
           // For other statuses, match against the status field from API
           let customerStatus = customer.status;
@@ -361,33 +364,47 @@ const CustomerPage = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        {statCards.map((stat) => (
-          <div
-            key={stat.label}
-            className={`flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:border-blue-400 transition-colors ${filters.status === stat.label ? 'border-blue-500 bg-blue-50' : ''}`}
-            onClick={() => {
-              if (stat.label === "Rent Due (1st-5th)") {
-                handleFilterChange("rentCycle", filters.rentCycle === "1-5" ? "all" : "1-5");
-              } else if (stat.label === "Active Residents") {
-                handleFilterChange("status", filters.status === "Active" ? "all" : "Active");
-                handleFilterChange("room", "assigned");
-              } else if (stat.label === "Pending Approval") {
-                handleFilterChange("status", "all");
-                // Actually, registration_status is not directly in the status filter dropdown, 
-                // but we can filter by derived status if needed. 
-                // For now just toggle common ones.
-              }
-            }}
-          >
-            <div>
-              <p className="text-sm text-gray-500 font-medium">{stat.label}</p>
-              <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+        {statCards.map((stat) => {
+          const isAllFiltersReset = filters.status === "all" && filters.room === "all" && filters.block === "all" && filters.rentCycle === "all" && searchTerm === "";
+
+          const isActive =
+            (stat.label === "Total Customers" && isAllFiltersReset) ||
+            (stat.label === "Active Residents" && filters.status === "Active") ||
+            (stat.label === "Rent Due (1st-5th)" && filters.rentCycle === "1-5") ||
+            (stat.label === "Pending Approval" && filters.status === "Pending");
+
+          return (
+            <div
+              key={stat.label}
+              className={`flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:border-blue-400 transition-colors ${isActive ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : ''}`}
+              onClick={() => {
+                if (stat.label === "Total Customers") {
+                  setFilters({ status: "all", room: "all", block: "all", rentCycle: "all" });
+                  setSearchTerm("");
+                } else if (stat.label === "Rent Due (1st-5th)") {
+                  setFilters((prev) => ({ ...prev, rentCycle: prev.rentCycle === "1-5" ? "all" : "1-5" }));
+                } else if (stat.label === "Active Residents") {
+                  const isTogglingOff = filters.status === "Active";
+                  setFilters((prev) => ({
+                    ...prev,
+                    status: isTogglingOff ? "all" : "Active",
+                    room: isTogglingOff ? "all" : "assigned",
+                  }));
+                } else if (stat.label === "Pending Approval") {
+                  setFilters((prev) => ({ ...prev, status: prev.status === "Pending" ? "all" : "Pending" }));
+                }
+              }}
+            >
+              <div>
+                <p className="text-sm text-gray-500 font-medium">{stat.label}</p>
+                <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+              </div>
+              <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+                <stat.icon className={`h-6 w-6 ${stat.color}`} />
+              </div>
             </div>
-            <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-              <stat.icon className={`h-6 w-6 ${stat.color}`} />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>

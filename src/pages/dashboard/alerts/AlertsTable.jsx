@@ -14,10 +14,14 @@ const AlertsTable = ({ alerts, loading }) => {
 
     const columns = [
         {
-            title: 'User',
-            dataIndex: 'email',
-            key: 'email',
-            render: (email) => email || 'N/A (Broadcast)',
+            title: 'Recipient',
+            key: 'recipient',
+            render: (_, record) => (
+                <div>
+                    <div style={{ fontWeight: 500 }}>{record.user_name || 'System'}</div>
+                    <div style={{ fontSize: '12px', color: '#8c8c8c' }}>{record.email || 'N/A'}</div>
+                </div>
+            ),
             responsive: ['xs', 'sm', 'md', 'lg', 'xl'],
         },
         {

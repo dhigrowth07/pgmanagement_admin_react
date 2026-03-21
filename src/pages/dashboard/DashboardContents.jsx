@@ -60,15 +60,15 @@ const DashboardContents = ({ onMenuChange }) => {
     dispatch(fetchDashboardMetrics());
 
     // Fetch bed availability summary
-    dispatch(/** @type {any} */ (fetchBedSummary()));
+    dispatch(/** @type {any} */(fetchBedSummary()));
 
     // Keep existing fetches for backward compatibility
-    dispatch(/** @type {any} */ (fetchAllCustomers()));
-    dispatch(/** @type {any} */ (fetchPendingUsers()));
-    dispatch(/** @type {any} */ (fetchRoomsData()));
-    dispatch(/** @type {any} */ (fetchAllIssues()));
+    dispatch(/** @type {any} */(fetchAllCustomers()));
+    dispatch(/** @type {any} */(fetchPendingUsers()));
+    dispatch(/** @type {any} */(fetchRoomsData()));
+    dispatch(/** @type {any} */(fetchAllIssues()));
     if (isPaymentEnabled) {
-      dispatch(/** @type {any} */ (fetchStatistics()));
+      dispatch(/** @type {any} */(fetchStatistics()));
     }
   }, [dispatch, isPaymentEnabled]);
 
@@ -99,7 +99,7 @@ const DashboardContents = ({ onMenuChange }) => {
           return hasRoom && isActive && hasNotVacated;
         }).length || 0,
       occupiedRooms: rooms?.filter((/** @type {any} */ r) => r.current_occupancy === r.capacity).length || 0,
-      unresolvedIssues: issues?.filter((/** @type {any} */ i) => i.status === "unresolved").length || 0,
+      unresolvedIssues: issues?.filter((/** @type {any} */ i) => !["closed", "resolved"].includes(i.status?.toLowerCase())).length || 0,
       totalCollected: isPaymentEnabled ? paymentStats?.total_collected || 0 : 0,
       vacatingUsers: vacatingUsersCount || 0,
       availableBeds: bedSummary?.available_beds || 0,
@@ -133,14 +133,14 @@ const DashboardContents = ({ onMenuChange }) => {
     },
     ...(isPaymentEnabled
       ? [
-          {
-            title: "Total Collected",
-            value: typeof stats.totalCollected === "string" ? stats.totalCollected : `₹${parseFloat(stats.totalCollected).toLocaleString("en-IN")}`,
-            icon: IndianRupee,
-            menuKey: "payments",
-            iconColor: "bg-slate-600",
-          },
-        ]
+        {
+          title: "Total Collected",
+          value: typeof stats.totalCollected === "string" ? stats.totalCollected : `₹${parseFloat(stats.totalCollected).toLocaleString("en-IN")}`,
+          icon: IndianRupee,
+          menuKey: "payments",
+          iconColor: "bg-slate-600",
+        },
+      ]
       : []),
   ];
 
@@ -168,14 +168,14 @@ const DashboardContents = ({ onMenuChange }) => {
     },
     ...(isPaymentEnabled
       ? [
-          {
-            title: "Payment Records",
-            description: "View and manage all payment transactions and history.",
-            icon: FileText,
-            iconColor: "bg-red-500",
-            action: () => onMenuChange("payments"),
-          },
-        ]
+        {
+          title: "Payment Records",
+          description: "View and manage all payment transactions and history.",
+          icon: FileText,
+          iconColor: "bg-red-500",
+          action: () => onMenuChange("payments"),
+        },
+      ]
       : []),
   ];
 
@@ -290,10 +290,10 @@ const DashboardContents = ({ onMenuChange }) => {
                                 <span className="text-gray-700">
                                   {user.created_at
                                     ? new Date(user.created_at).toLocaleDateString("en-IN", {
-                                        day: "numeric",
-                                        month: "short",
-                                        year: "numeric",
-                                      })
+                                      day: "numeric",
+                                      month: "short",
+                                      year: "numeric",
+                                    })
                                     : "N/A"}
                                 </span>
                               </div>
@@ -355,19 +355,18 @@ const DashboardContents = ({ onMenuChange }) => {
                                 <span className="text-gray-700">
                                   {user.vacating_on
                                     ? new Date(user.vacating_on).toLocaleDateString("en-IN", {
-                                        day: "numeric",
-                                        month: "short",
-                                        year: "numeric",
-                                      })
+                                      day: "numeric",
+                                      month: "short",
+                                      year: "numeric",
+                                    })
                                     : "N/A"}
                                 </span>
                               </div>
                             </td>
                             <td className="py-3 px-4">
                               <span
-                                className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                  user.days_until_vacation <= 7 ? "bg-red-100 text-red-700" : user.days_until_vacation <= 30 ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"
-                                }`}
+                                className={`px-2 py-1 rounded-full text-xs font-medium ${user.days_until_vacation <= 7 ? "bg-red-100 text-red-700" : user.days_until_vacation <= 30 ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"
+                                  }`}
                               >
                                 {user.days_until_vacation} days
                               </span>

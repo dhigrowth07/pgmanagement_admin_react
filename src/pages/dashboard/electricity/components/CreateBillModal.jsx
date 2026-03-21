@@ -82,8 +82,8 @@ const CreateBillModal = ({ visible, onCancel, onCreated }) => {
       confirmLoading={status === "loading_action"}
       destroyOnClose
     >
-      <Form 
-        layout="vertical" 
+      <Form
+        layout="vertical"
         form={form}
         onValuesChange={checkForDuplicateBill}
       >
@@ -156,9 +156,12 @@ const CreateBillModal = ({ visible, onCancel, onCreated }) => {
         <Form.Item
           label="Amount"
           name="amount"
-          rules={[{ required: true, message: "Amount is required" }]}
+          rules={[
+            { required: true, message: "Amount is required" },
+            { type: 'number', max: 10000, message: 'Amount cannot exceed ₹10,000' }
+          ]}
         >
-          <InputNumber min={1} className="w-full" />
+          <InputNumber min={1} max={10000} className="w-full" />
         </Form.Item>
       </Form>
     </Modal>

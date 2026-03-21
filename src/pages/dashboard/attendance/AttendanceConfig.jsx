@@ -1,11 +1,11 @@
 import React, { useEffect } from "react";
 import { Form, Input, InputNumber, TimePicker, Button, Card, Row, Col, Alert, Spin } from "antd";
 import { useDispatch, useSelector } from "react-redux";
-import { 
-  fetchAttendanceConfig, 
-  saveAttendanceConfig, 
-  selectAttendanceConfig, 
-  selectAttendanceStatus 
+import {
+  fetchAttendanceConfig,
+  saveAttendanceConfig,
+  selectAttendanceConfig,
+  selectAttendanceStatus
 } from "../../../redux/attendance/attendanceSlice";
 import dayjs from "dayjs";
 import { Save, MapPin } from "lucide-react";
@@ -53,6 +53,32 @@ const AttendanceConfig = () => {
     dispatch(saveAttendanceConfig(payload));
   };
 
+  const reverseGeocode = async (lat, lng) => {
+    try {
+      const apiUrl = import.meta.env.VITE_PUBLIC_API_URL || 'http://localhost:3000';
+      const response = await fetch(
+        `${apiUrl}/api/v1/attendance/reverse-geocode?lat=${lat}&lon=${lng}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data?.display_name) {
+          form.setFieldsValue({
+            pg_address: result.data.display_name
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Reverse geocoding error:", error);
+    }
+  };
+
   const handleGetCurrentLocation = () => {
     if (!navigator.geolocation) {
       toast.error("Geolocation is not supported by your browser");
@@ -61,45 +87,47 @@ const AttendanceConfig = () => {
 
     setGettingLocation(true);
 
-    console.log("navigator.geolocation", navigator.geolocation);
-
     const onSuccess = (position) => {
+      const { latitude, longitude, accuracy } = position.coords;
+
       // Check for poor accuracy (> 200m)
-      if (position.coords.accuracy > 200) {
-        toast.error(`Location accuracy is too low (${Math.round(position.coords.accuracy)}m). Please move outdoors or enable GPS.`);
+      if (accuracy > 200) {
+        toast.error(`Location accuracy is too low (${Math.round(accuracy)}m). Please move outdoors or enable GPS.`);
         setGettingLocation(false);
         return;
       }
 
       form.setFieldsValue({
-        pg_latitude: Number(position.coords.latitude.toFixed(8)),
-        pg_longitude: Number(position.coords.longitude.toFixed(8)),
+        pg_latitude: Number(latitude.toFixed(8)),
+        pg_longitude: Number(longitude.toFixed(8)),
       });
       setMapPosition({
-        lat: position.coords.latitude,
-        lng: position.coords.longitude
+        lat: latitude,
+        lng: longitude
       });
-      
-      console.log("position.coords", position.coords);
-      toast.success(`Location fetched successfully (Accuracy: ${Math.round(position.coords.accuracy)}m)`);
+
+      // Get address
+      reverseGeocode(latitude, longitude);
+
+      toast.success(`Location fetched successfully (Accuracy: ${Math.round(accuracy)}m)`);
       setGettingLocation(false);
     };
 
     const onErrorHighAccuracy = (error) => {
       console.warn("High accuracy location failed, trying low accuracy...", error);
-      
+
       // Fallback to low accuracy which is faster and more reliable indoors (wifi/cell based)
       navigator.geolocation.getCurrentPosition(
         onSuccess,
         (finalError) => {
-           console.error("Error getting location:", finalError);
-           let errorMsg = "Unable to retrieve your location";
-           if (finalError.code === 1) errorMsg = "Location permission denied";
-           else if (finalError.code === 2) errorMsg = "Location unavailable";
-           else if (finalError.code === 3) errorMsg = "Location request timed out. Please try again.";
-           
-           toast.error(errorMsg);
-           setGettingLocation(false);
+          console.error("Error getting location:", finalError);
+          let errorMsg = "Unable to retrieve your location";
+          if (finalError.code === 1) errorMsg = "Location permission denied";
+          else if (finalError.code === 2) errorMsg = "Location unavailable";
+          else if (finalError.code === 3) errorMsg = "Location request timed out. Please try again.";
+
+          toast.error(errorMsg);
+          setGettingLocation(false);
         },
         {
           enableHighAccuracy: false,
@@ -121,15 +149,16 @@ const AttendanceConfig = () => {
     );
   };
 
-
-
-  const handleMapLocationChange = (latlng) => {
+  const handleMapLocationChange = async (latlng) => {
     const { lat, lng } = latlng;
     setMapPosition({ lat, lng });
     form.setFieldsValue({
       pg_latitude: Number(lat.toFixed(8)),
       pg_longitude: Number(lng.toFixed(8)),
     });
+
+    // Reverse geocode to get address
+    reverseGeocode(lat, lng);
   };
 
   if (loading && !config) {
@@ -144,7 +173,7 @@ const AttendanceConfig = () => {
         type="info"
         showIcon
         className="mb-6"
-        style={{marginBottom: "1rem"}}
+        style={{ marginBottom: "1rem" }}
       />
 
       <Form
@@ -155,13 +184,13 @@ const AttendanceConfig = () => {
           allowed_radius_meters: 200,
         }}
       >
-        <Card 
-          title="PG Location Settings" 
+        <Card
+          title="PG Location Settings"
           className="mb-6 shadow-sm"
-          style={{marginBottom: "1rem"}}
+          style={{ marginBottom: "1rem" }}
           extra={
-            <Button 
-              type="default" 
+            <Button
+              type="default"
               onClick={handleGetCurrentLocation}
               loading={gettingLocation}
               icon={<MapPin size={16} />}
@@ -172,14 +201,14 @@ const AttendanceConfig = () => {
           }
         >
           <div className="mb-6 border rounded-lg overflow-hidden">
-             <MapPicker initialPosition={mapPosition} onLocationChange={handleMapLocationChange} />
-             <div className="p-2 bg-gray-50 text-xs text-center text-gray-500">
-               Click anywhere on the map to pin-point exact location
-             </div>
+            <MapPicker initialPosition={mapPosition} onLocationChange={handleMapLocationChange} />
+            <div className="p-2 bg-gray-50 text-xs text-center text-gray-500">
+              Click anywhere on the map to pin-point exact location
+            </div>
           </div>
 
           <Row gutter={16}>
-             <Col span={24}>
+            <Col span={24}>
               <Form.Item
                 name="pg_address"
                 label="Approximate Address (From Map)"
@@ -288,12 +317,12 @@ const AttendanceConfig = () => {
           </Row>
         </Card>
 
-        <div className="flex justify-end"             style={{marginTop: "1rem"}}
->
-          <Button 
-            type="primary" 
-            htmlType="submit" 
-            icon={<Save size={16} />} 
+        <div className="flex justify-end" style={{ marginTop: "1rem" }}
+        >
+          <Button
+            type="primary"
+            htmlType="submit"
+            icon={<Save size={16} />}
             loading={loading}
             size="large"
           >
