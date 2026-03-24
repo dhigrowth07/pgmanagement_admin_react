@@ -4,7 +4,7 @@ import dayjs from "dayjs";
 import { Spin, message, Tooltip, DatePicker, Tag, Avatar, Card } from "antd";
 import foodService from "../../../services/foodService";
 
-const FoodTable = () => {
+const FoodTable = ({ refreshKey }) => {
   const [activeTab, setActiveTab] = useState("food");
   const [startOfWeekStr, setStartOfWeekStr] = useState(dayjs().startOf('week').add(1, 'day').format("YYYY-MM-DD"));
   const [schedule, setSchedule] = useState([]);
@@ -65,11 +65,11 @@ const FoodTable = () => {
       const resp = await foodService.getDailySummary(date.format("YYYY-MM-DD"));
       setDailyResponses(resp.data.data || { users: [], breakfast_count: 0, lunch_count: 0, dinner_count: 0, total_users: 0 });
     } catch (error) {
-      console.error("Error fetching daily responses:", error);
-      setDailyResponses({ users: [], breakfast_count: 0, lunch_count: 0, dinner_count: 0, total_users: 0 });
       if (error?.response?.status !== 404) {
+        console.error("Error fetching daily responses:", error);
         message.error("Failed to load poll responses");
       }
+      setDailyResponses({ users: [], breakfast_count: 0, lunch_count: 0, dinner_count: 0, total_users: 0 });
     } finally {
       setResponsesLoading(false);
     }
@@ -81,7 +81,7 @@ const FoodTable = () => {
     } else if (activeTab === "responses" || activeTab === "polls") {
       fetchDailyResponses(selectedDate);
     }
-  }, [activeTab, fetchData, selectedDate]);
+  }, [activeTab, fetchData, selectedDate, refreshKey]);
 
   const handlePrevWeek = () => setStartOfWeekStr(startOfWeek.subtract(7, "day").format("YYYY-MM-DD"));
   const handleNextWeek = () => setStartOfWeekStr(startOfWeek.add(7, "day").format("YYYY-MM-DD"));

@@ -45,13 +45,13 @@ const BASE_MENU_ITEMS = [
     type: "item",
     permission: null, // Always visible
   },
-  // {
-  //   key: "foods",
-  //   icon: <Utensils size={18} />,
-  //   label: "Food Management",
-  //   type: "item",
-  //   permission: "is_food_enabled",
-  // },
+  {
+    key: "foods",
+    icon: <Utensils size={18} />,
+    label: "Food Management",
+    type: "item",
+    permission: "is_food_enabled",
+  },
   {
     key: "issues",
     icon: <ShieldAlert size={18} />,

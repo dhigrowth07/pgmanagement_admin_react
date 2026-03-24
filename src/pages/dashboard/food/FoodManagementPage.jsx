@@ -13,12 +13,18 @@ const FoodManagementPage = () => {
   const [isPollLoading, setIsPollLoading] = useState(false);
   const [isMarkOpen, setIsMarkOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [stats, setStats] = useState([
     { label: "Active Customers", value: 0, icon: Users, color: "text-blue-600", bgColor: "bg-blue-100" },
     { label: "Veg Preference", value: 0, icon: Leaf, color: "text-green-600", bgColor: "bg-green-100" },
     { label: "Non-Veg", value: 0, icon: Beef, color: "text-rose-600", bgColor: "bg-rose-100" },
     { label: "Active Polls", value: 0, icon: Vote, color: "text-orange-600", bgColor: "bg-orange-100" },
   ]);
+
+  const handleRefresh = () => {
+    setRefreshKey((prev) => prev + 1);
+    fetchStats();
+  };
 
   useEffect(() => {
     fetchStats();
@@ -53,7 +59,7 @@ const FoodManagementPage = () => {
       } else {
         message.warning("Poll triggered, but some notifications might have failed.");
       }
-      fetchStats(); // Refresh stats
+      handleRefresh(); // Refresh everything
     } catch (error) {
       hide();
       console.error("Poll Error:", error);
@@ -143,7 +149,7 @@ const FoodManagementPage = () => {
 
         {/* Table Container */}
         <div className="overflow-x-auto">
-          <FoodTable />
+          <FoodTable refreshKey={refreshKey} />
         </div>
 
         {/* Action Modals */}
@@ -152,7 +158,7 @@ const FoodManagementPage = () => {
           onCancel={() => setIsMarkOpen(false)}
           onSuccess={() => {
             setIsMarkOpen(false);
-            fetchStats();
+            handleRefresh();
           }}
         />
 
