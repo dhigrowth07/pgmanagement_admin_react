@@ -4,14 +4,31 @@ import dayjs from "dayjs";
 import { Spin, message, Tooltip, DatePicker, Tag, Avatar, Card } from "antd";
 import foodService from "../../../services/foodService";
 
-const FoodTable = ({ refreshKey }) => {
+/**
+ * @param {Object} props
+ * @param {number} props.refreshKey
+ * @param {string} [props.activeTab]
+ * @param {string} [props.searchText]
+ * @param {string} [props.mealFilter]
+ * @param {(tab: string) => void} [props.onTabChange]
+ */
+const FoodTable = ({ refreshKey, activeTab: propActiveTab, searchText = "", mealFilter = "all", onTabChange }) => {
   const [activeTab, setActiveTab] = useState("food");
   const [startOfWeekStr, setStartOfWeekStr] = useState(dayjs().startOf('week').add(1, 'day').format("YYYY-MM-DD"));
-  const [schedule, setSchedule] = useState([]);
+  /** @type {[any[], React.Dispatch<React.SetStateAction<any[]>>]} */
+  const [schedule, setSchedule] = useState(/** @type {any[]} */([]));
   const [loading, setLoading] = useState(false);
+
+  // Sync internal activeTab with prop if it changes
+  useEffect(() => {
+    if (propActiveTab) {
+      setActiveTab(propActiveTab);
+    }
+  }, [propActiveTab]);
 
   // For Responses Tab
   const [selectedDate, setSelectedDate] = useState(dayjs().add(1, 'day'));
+  /** @type {[{users: any[], breakfast_count: number, lunch_count: number, dinner_count: number, total_users: number}, React.Dispatch<React.SetStateAction<any>>]} */
   const [dailyResponses, setDailyResponses] = useState({ users: [], breakfast_count: 0, lunch_count: 0, dinner_count: 0, total_users: 0 });
   const [responsesLoading, setResponsesLoading] = useState(false);
 
@@ -104,7 +121,10 @@ const FoodTable = ({ refreshKey }) => {
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => {
+                setActiveTab(tab.id);
+                if (onTabChange) onTabChange(tab.id);
+              }}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${activeTab === tab.id
                 ? "bg-blue-600 text-white shadow-md shadow-blue-100"
                 : "text-gray-400 hover:bg-gray-50 hover:text-gray-600 border border-transparent"
@@ -243,26 +263,47 @@ const FoodTable = ({ refreshKey }) => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {dailyResponses.users.map((u) => (
-                      <tr key={u.user_id} className="hover:bg-gray-50 transition-colors group">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="bg-blue-600 font-black flex-shrink-0">{u.name[0]}</Avatar>
-                            <div>
-                              <div className="font-black text-gray-800 leading-tight">{u.name}</div>
-                              <div className="text-[10px] text-gray-400 font-medium">{u.email}</div>
+                    {dailyResponses.users
+                      .filter((u) => {
+                        const searchStr = searchText.toLowerCase().trim();
+                        const nameMatch = u.name.toLowerCase().includes(searchStr);
+                        const emailMatch = u.email?.toLowerCase().includes(searchStr);
+                        const roomMatch = u.room_number?.toString().toLowerCase().includes(searchStr);
+
+                        let mealMatch = true;
+                        if (mealFilter === "breakfast") mealMatch = !!u.breakfast;
+                        else if (mealFilter === "lunch") mealMatch = !!u.lunch;
+                        else if (mealFilter === "dinner") mealMatch = !!u.dinner;
+
+                        return (nameMatch || emailMatch || roomMatch) && mealMatch;
+                      })
+                      .map((u) => (
+                        <tr key={u.user_id} className="hover:bg-gray-50 transition-colors group">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="bg-blue-600 font-black flex-shrink-0">{u.name[0]}</Avatar>
+                              <div>
+                                <div className="font-black text-gray-800 leading-tight">
+                                  {u.name}
+                                  {u.room_number && (
+                                    <span className="ml-2 text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">
+                                      Room {u.room_number}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[10px] text-gray-400 font-medium">{u.email}</div>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-center">{u.breakfast ? <div className="bg-green-100 text-green-700 w-8 h-8 rounded-full flex items-center justify-center mx-auto"><Check size={16} strokeWidth={3} /></div> : <div className="bg-gray-100 text-gray-300 w-8 h-8 rounded-full flex items-center justify-center mx-auto"><X size={16} strokeWidth={3} /></div>}</td>
-                        <td className="px-6 py-4 text-center">{u.lunch ? <div className="bg-blue-100 text-blue-700 w-8 h-8 rounded-full flex items-center justify-center mx-auto"><Check size={16} strokeWidth={3} /></div> : <div className="bg-gray-100 text-gray-300 w-8 h-8 rounded-full flex items-center justify-center mx-auto"><X size={16} strokeWidth={3} /></div>}</td>
-                        <td className="px-6 py-4 text-center">{u.dinner ? <div className="bg-orange-100 text-orange-700 w-8 h-8 rounded-full flex items-center justify-center mx-auto"><Check size={16} strokeWidth={3} /></div> : <div className="bg-gray-100 text-gray-300 w-8 h-8 rounded-full flex items-center justify-center mx-auto"><X size={16} strokeWidth={3} /></div>}</td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="text-gray-800 font-black text-xs">{dayjs(u.last_updated).format("hh:mm A")}</div>
-                          <div className="text-[10px] text-gray-400 font-bold uppercase">{dayjs(u.last_updated).format("MMM DD")}</div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="px-6 py-4 text-center">{u.breakfast ? <div className="bg-green-100 text-green-700 w-8 h-8 rounded-full flex items-center justify-center mx-auto"><Check size={16} strokeWidth={3} /></div> : <div className="bg-gray-100 text-gray-300 w-8 h-8 rounded-full flex items-center justify-center mx-auto"><X size={16} strokeWidth={3} /></div>}</td>
+                          <td className="px-6 py-4 text-center">{u.lunch ? <div className="bg-blue-100 text-blue-700 w-8 h-8 rounded-full flex items-center justify-center mx-auto"><Check size={16} strokeWidth={3} /></div> : <div className="bg-gray-100 text-gray-300 w-8 h-8 rounded-full flex items-center justify-center mx-auto"><X size={16} strokeWidth={3} /></div>}</td>
+                          <td className="px-6 py-4 text-center">{u.dinner ? <div className="bg-orange-100 text-orange-700 w-8 h-8 rounded-full flex items-center justify-center mx-auto"><Check size={16} strokeWidth={3} /></div> : <div className="bg-gray-100 text-gray-300 w-8 h-8 rounded-full flex items-center justify-center mx-auto"><X size={16} strokeWidth={3} /></div>}</td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="text-gray-800 font-black text-xs">{dayjs(u.last_updated).format("hh:mm A")}</div>
+                            <div className="text-[10px] text-gray-400 font-bold uppercase">{dayjs(u.last_updated).format("MMM DD")}</div>
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               )}

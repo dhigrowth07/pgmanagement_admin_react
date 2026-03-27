@@ -14,6 +14,9 @@ const FoodManagementPage = () => {
   const [isMarkOpen, setIsMarkOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [activeTableTab, setActiveTableTab] = useState("food");
+  const [searchText, setSearchText] = useState("");
+  const [mealFilter, setMealFilter] = useState("all");
   const [stats, setStats] = useState([
     { label: "Active Customers", value: 0, icon: Users, color: "text-blue-600", bgColor: "bg-blue-100" },
     { label: "Veg Preference", value: 0, icon: Leaf, color: "text-green-600", bgColor: "bg-green-100" },
@@ -102,7 +105,30 @@ const FoodManagementPage = () => {
             return (
               <div
                 key={stat.label}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 hover:border-blue-200 transition-colors shadow-sm"
+                onClick={() => {
+                  if (stat.label === "Veg Preference") {
+                    setActiveTableTab("responses");
+                    setMealFilter("breakfast");
+                  } else if (stat.label === "Non-Veg") {
+                    setActiveTableTab("responses");
+                    setMealFilter("lunch");
+                  } else if (stat.label === "Active Customers") {
+                    setActiveTableTab("responses");
+                    setMealFilter("all");
+                  } else if (stat.label === "Active Polls") {
+                    setActiveTableTab("polls");
+                    setMealFilter("all");
+                  }
+                }}
+                className={`flex items-center justify-between p-4 rounded-xl border transition-all shadow-sm cursor-pointer
+                  ${(stat.label === "Veg Preference" && activeTableTab === "responses" && mealFilter === "breakfast") ||
+                    (stat.label === "Non-Veg" && activeTableTab === "responses" && mealFilter === "lunch") ||
+                    (stat.label === "Active Customers" && activeTableTab === "responses" && mealFilter === "all")
+                    ? "bg-blue-50 border-blue-200 ring-1 ring-blue-200"
+                    : (stat.label === "Active Polls" && activeTableTab === "polls")
+                      ? "bg-orange-50 border-orange-200 ring-1 ring-orange-200"
+                      : "bg-gray-50 border-gray-100 hover:border-blue-200"
+                  }`}
               >
                 <div>
                   <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{stat.label}</p>
@@ -124,6 +150,8 @@ const FoodManagementPage = () => {
               prefix={<SearchOutlined className="text-gray-400" />}
               className="h-11 rounded-lg border-gray-200"
               allowClear
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
             />
           </div>
 
@@ -149,7 +177,16 @@ const FoodManagementPage = () => {
 
         {/* Table Container */}
         <div className="overflow-x-auto">
-          <FoodTable refreshKey={refreshKey} />
+          <FoodTable
+            refreshKey={refreshKey}
+            activeTab={activeTableTab}
+            searchText={searchText}
+            mealFilter={mealFilter}
+            onTabChange={(tab) => {
+              setActiveTableTab(tab);
+              if (tab !== "responses") setMealFilter("all");
+            }}
+          />
         </div>
 
         {/* Action Modals */}
