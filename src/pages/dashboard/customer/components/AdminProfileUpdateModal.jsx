@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Form, Input, Button, Row, Col, Select, DatePicker, Upload, Avatar, message } from "antd";
+import { Modal, Form, Input, Button, Row, Col, Select, DatePicker, Upload, Avatar, message, Switch } from "antd";
 import { UploadOutlined, UserOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
+import { useSelector } from "react-redux";
+import { selectUser } from "../../../../redux/auth/authSlice";
 
 const { Option } = Select;
 
 const AdminProfileUpdateModal = ({ visible, onCancel, onSubmit, loading, customer }) => {
   const [form] = Form.useForm();
+  const user = useSelector(selectUser);
+  const isFoodEnabled = user?.feature_permissions?.is_food_enabled || false;
   /** @type {[Array<any>, Function]} */
   const [fileList, setFileList] = useState([]);
   /** @type {[string | null, Function]} */
@@ -34,6 +38,8 @@ const AdminProfileUpdateModal = ({ visible, onCancel, onSubmit, loading, custome
         dob: customer.dob ? dayjs(customer.dob, ["YYYY-MM-DD", "DD-MM-YYYY"]) : null,
         emergency_number_one: customer.emergency_number_one,
         emergency_number_two: customer.emergency_number_two,
+        is_meal_subscribed: customer.is_meal_subscribed || false,
+        advance: customer.advance,
       });
 
       setProfileImagePreview(customer.profile_image_url || null);
@@ -78,6 +84,8 @@ const AdminProfileUpdateModal = ({ visible, onCancel, onSubmit, loading, custome
     formData.append("dob", values.dob ? values.dob.format("YYYY-MM-DD") : "");
     formData.append("emergency_number_one", values.emergency_number_one || "");
     formData.append("emergency_number_two", values.emergency_number_two || "");
+    formData.append("is_meal_subscribed", values.is_meal_subscribed ? "true" : "false");
+    formData.append("advance", values.advance || "");
 
     // Add profile image if changed
     if (profileImageFile) {
@@ -272,6 +280,21 @@ const AdminProfileUpdateModal = ({ visible, onCancel, onSubmit, loading, custome
           <Col span={12}>
             <Form.Item name="emergency_number_two" label="Emergency Contact 2" rules={optionalPhoneRules}>
               <Input placeholder="Secondary emergency contact" disabled={loading} />
+            </Form.Item>
+          </Col>
+          {isFoodEnabled && (
+            <Col span={12}>
+              <Form.Item name="is_meal_subscribed" label="Meal Service Subscribed" valuePropName="checked">
+                <Switch disabled={loading} />
+              </Form.Item>
+            </Col>
+          )}
+        </Row>
+
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item name="advance" label="Advance Amount (₹)">
+              <Input type="number" placeholder="0.00" disabled={loading} />
             </Form.Item>
           </Col>
         </Row>

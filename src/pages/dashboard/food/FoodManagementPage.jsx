@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Button, Card, Input, Typography, message, Modal } from "antd";
-import { PlusOutlined, SearchOutlined, CheckCircleOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { Button, Card, Input, Typography, message } from "antd";
+import { PlusOutlined, SearchOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import MarkAvailabilityModal from "./modals/MarkAvailabilityModal";
 import GenerateFoodReportModal from "./modals/GenerateFoodReportModal";
 import foodService from "../../../services/foodService";
 import FoodTable from "./FoodTable";
-import { Users, Leaf, Beef, Vote } from "lucide-react";
+import FoodSettingsModal from "./modals/FoodSettingsModal";
+import { Users, Leaf, Beef, Vote, Settings } from "lucide-react";
 
 const { Title } = Typography;
 
@@ -13,6 +14,7 @@ const FoodManagementPage = () => {
   const [isPollLoading, setIsPollLoading] = useState(false);
   const [isMarkOpen, setIsMarkOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [activeTableTab, setActiveTableTab] = useState("food");
   const [searchText, setSearchText] = useState("");
@@ -86,15 +88,22 @@ const FoodManagementPage = () => {
               </Title>
               <p className="text-gray-400 text-xs mt-1 font-normal">Manage meal plans, polls and food preferences</p>
             </div>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              loading={isPollLoading}
-              onClick={handleCreatePoll}
-              className="bg-green-700 hover:!bg-green-800 border-none h-10 px-6 rounded-lg w-full sm:w-auto order-first sm:order-last"
-            >
-              Create Poll
-            </Button>
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto order-first sm:order-last">
+              <Button
+                icon={<Settings size={18} />}
+                onClick={() => setIsSettingsOpen(true)}
+                className="h-10 px-4 rounded-lg border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-200"
+              />
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                loading={isPollLoading}
+                onClick={handleCreatePoll}
+                className="bg-green-700 hover:!bg-green-800 border-none h-10 px-6 rounded-lg flex-1 sm:flex-none font-bold"
+              >
+                Create Poll
+              </Button>
+            </div>
           </div>
         }
       >
@@ -203,6 +212,15 @@ const FoodManagementPage = () => {
           visible={isReportOpen}
           onCancel={() => setIsReportOpen(false)}
           onSuccess={() => setIsReportOpen(false)}
+        />
+
+        <FoodSettingsModal
+          visible={isSettingsOpen}
+          onCancel={() => setIsSettingsOpen(false)}
+          onSuccess={() => {
+            setIsSettingsOpen(false);
+            handleRefresh();
+          }}
         />
       </Card>
     </div>

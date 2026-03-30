@@ -52,17 +52,16 @@ const FoodTable = ({ refreshKey, activeTab: propActiveTab, searchText = "", meal
       const merged = [];
       for (let i = 0; i < 7; i++) {
         const date = startOfWeek.add(i, "day").format("YYYY-MM-DD");
-        const summary = summaries.find((s) => dayjs(s.poll_date || s.date).format("YYYY-MM-DD") === date) || {
-          poll_date: date,
-          breakfast_count: 0,
-          lunch_count: 0,
-          dinner_count: 0,
-          total_users: 0
-        };
+        const summary = summaries.find((s) => dayjs(s.poll_date || s.date).format("YYYY-MM-DD") === date);
         const availability = availabilities.find((a) => dayjs(a.poll_date).format("YYYY-MM-DD") === date);
 
         merged.push({
-          ...summary,
+          ...(summary || {}),
+          poll_date: date, // Force the clean YYYY-MM-DD date as source of truth
+          breakfast_count: summary?.breakfast_count || 0,
+          lunch_count: summary?.lunch_count || 0,
+          dinner_count: summary?.dinner_count || 0,
+          total_users: summary?.total_users || 0,
           availability: availability || null
         });
       }
